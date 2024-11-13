@@ -8,11 +8,19 @@ import sys
 import base64
 from PIL import Image # type: ignore
 import re
+import logging
+
+logging.basicConfig(
+    filename = os.path.abspath("logs/output.log"), 
+    level=logging.DEBUG,  # Define el nivel de los logs (INFO, DEBUG, etc.)
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 
 class Switch:
     @staticmethod
     def verificar_tipo_doc(data):
+        logging.info("Este es un mensaje informativo.")
         if data["tipo"] == "contrato":
             return Contrato.generar_contrato(data)
         elif data["tipo"] == "adendum":
@@ -27,7 +35,6 @@ class Adendum:
             ruta_plantilla = os.path.abspath("plantilla/plantilla_adendum.docx")
             ruta_docx_generado = os.path.abspath("plantilla/adendum.docx")
             log_reemplazar = GenerarPdf.reemplazar_texto_docx(ruta_plantilla, ruta_docx_generado, data)
-            print("Hola")
             if log_reemplazar:
                 ruta_pdf_generado = os.path.abspath("plantilla")
                 log_pdf = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado, ruta_pdf_generado)
@@ -107,9 +114,11 @@ class GenerarPdf:
                 contenido_base64 = base64.b64encode(contenido_pdf).decode('utf-8')
                 return contenido_base64
         except FileNotFoundError:
+            logging.error(f"El archivo {ruta_pdf} no se encuentra.")
             print(f"El archivo {ruta_pdf} no se encuentra.")
             return False
         except Exception as e:
+            logging.error(f"Error al convertir el PDF a base64: {e}")
             print(f"Error al convertir el PDF a base64: {e}")
             return False
 
@@ -122,10 +131,13 @@ class GenerarPdf:
                 # Verificar si el archivo existe
                 if os.path.exists(ruta):
                     os.remove(ruta)  # Eliminar el archivo
+                    logging.error(f"El archivo {ruta} ha sido eliminado.")
                     print(f"El archivo {ruta} ha sido eliminado.")
                 else:
+                    logging.error(f"El archivo {ruta} ha sido eliminado.")
                     print(f"El archivo {ruta} no existe.")
             except Exception as e:
+                logging.error(f"Error al intentar eliminar el archivo {ruta}: {e}")
                 print(f"Error al intentar eliminar el archivo {ruta}: {e}")
                 return False
         return True
@@ -165,6 +177,7 @@ class GenerarPdf:
             doc.save(archivo_salida)
             return True
         except Exception as e:
+            logging.error(f"Error: {e}")
             print(f"Error: {e}")  # Imprime el error si ocurre
             return False  # En caso de error, devolver False
         
@@ -210,6 +223,7 @@ class GenerarPdf:
             doc.save(archivo_salida)
             return True
         except Exception as e:
+            logging.error(f"Error: {e}")
             print(f"Error: {e}")  # Imprime el error si ocurre
             return False  # En caso de error, devolver False
 
@@ -228,6 +242,7 @@ class GenerarPdf:
             subprocess.run([libreoffice_path, '--headless', '--convert-to', 'pdf', archivo_entrada, '--outdir', archivo_salida])
             return True
         except Exception as e:
+            logging.error(f"Error: {e}")
             print(f"Error: {e}")  # Imprime el error si ocurre
             return False  # En caso de error, devolver False
 
@@ -266,5 +281,6 @@ class GenerarPdf:
             doc.save(ruta_docx_imagen)
             return True
         except Exception as e:
+            logging.error(f"Error: {e}")
             print(f"Error: {e}")  # Imprime el error si ocurre
             return False  # En caso de error, devolver False
