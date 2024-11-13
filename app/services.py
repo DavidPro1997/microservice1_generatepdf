@@ -44,7 +44,10 @@ class Adendum:
                         return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}    
                 else:
                     return {"estado": False, "mensaje": "Documento PDF no se puede crear"}    
-                  
+            else:
+                    return {"estado": False, "mensaje": "No se ha posido reemplazar los datos en la plantilla"}   
+        else:
+            return {"estado": False, "mensaje": "No hay datos en el body"}   
            
     
 
