@@ -3,5 +3,6 @@ plantilla/adendum.pdf
 plantilla/recibo*
 venv/
 logs/
-app/__pycache__/
+app/__pycache__/*.pyc
 __pycache__/
+app/__pycache__/
