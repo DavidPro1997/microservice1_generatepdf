@@ -27,6 +27,7 @@ class Adendum:
             ruta_plantilla = os.path.abspath("plantilla/plantilla_adendum.docx")
             ruta_docx_generado = os.path.abspath("plantilla/adendum.docx")
             log_reemplazar = GenerarPdf.reemplazar_texto_docx(ruta_plantilla, ruta_docx_generado, data)
+            print("Hola")
             if log_reemplazar:
                 ruta_pdf_generado = os.path.abspath("plantilla")
                 log_pdf = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado, ruta_pdf_generado)
