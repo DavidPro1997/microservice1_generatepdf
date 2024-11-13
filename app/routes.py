@@ -9,6 +9,7 @@ def index():
 
 @app.route('/ejemplo1', methods=['POST'])
 def ejemplo1():
+    print("consultando...")
     data = request.json
     respuesta = Switch.verificar_tipo_doc(data)
     return jsonify(respuesta)
