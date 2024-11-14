@@ -1,7 +1,7 @@
 import os
 from docx import Document # type: ignore
 from docx.shared import Pt # type: ignore
-from docx.shared import Inches # type: ignore
+from docx.shared import Cm # type: ignore
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT # type: ignore
 import subprocess
 import sys
@@ -9,6 +9,7 @@ import base64
 from PIL import Image # type: ignore
 import re
 import logging
+from PyPDF2 import PdfMerger # type: ignore
 
 logging.basicConfig(
     filename = os.path.abspath("logs/output.log"), 
@@ -28,28 +29,42 @@ class Switch:
         else:
             return {"estado": False, "mensaje": "No se reconoce el tipo de archivo"}
 
+
 class Adendum:
     @staticmethod
     def generar_adendum(data):
         if data:
-            ruta_plantilla = os.path.abspath("plantilla/plantilla_adendum.docx")
-            ruta_docx_generado = os.path.abspath("plantilla/adendum.docx")
-            log_reemplazar = GenerarPdf.reemplazar_texto_docx(ruta_plantilla, ruta_docx_generado, data)
-            if log_reemplazar:
-                ruta_pdf_generado = os.path.abspath("plantilla")
-                log_pdf = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado, ruta_pdf_generado)
-                if log_pdf:
-                    docs_eliminar = [ruta_docx_generado]
-                    log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
-                    if log_eliminar_data:
-                        ruta_pdf = os.path.abspath("plantilla/adendum.pdf")
-                        log_base64 = GenerarPdf.pdf_a_base64(ruta_pdf)
-                        if log_base64:
-                            return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": log_base64}    
+            ruta_plantilla_adendum = os.path.abspath("plantilla/plantilla_adendum.docx")
+            ruta_plantilla_declaraciones = os.path.abspath("plantilla/plantilla_declaraciones.docx")
+            ruta_docx_generado_adendum = os.path.abspath("plantilla/adendum.docx")
+            ruta_docx_generado_declaraciones = os.path.abspath("plantilla/declaraciones.docx")
+            log_reemplazar_adendum = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_adendum, ruta_docx_generado_adendum, data)
+            log_reemplazar_declaraciones = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_declaraciones, ruta_docx_generado_declaraciones, data)
+            if log_reemplazar_adendum and log_reemplazar_declaraciones:
+                ruta_directorio_pdf = os.path.abspath("plantilla")
+                ruta_pdf_adendum = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_adendum, ruta_directorio_pdf)
+                ruta_pdf_declaraciones = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_declaraciones, ruta_directorio_pdf)
+                if ruta_pdf_adendum and ruta_pdf_declaraciones:
+                    log_imagenes = GenerarPdf.procesar_imagenes(data["recibos_pago"])
+                    if log_imagenes["estado"] == True:
+                        pdfs_unir = [ruta_pdf_adendum, ruta_pdf_declaraciones, log_imagenes["ruta"]]
+                        ruta_pdf = os.path.abspath("plantilla/adendum_completo.pdf")
+                        log_unir_pdf = GenerarPdf.unir_pdfs(pdfs_unir, ruta_pdf)
+                        if log_unir_pdf:
+                            docs_eliminar = [ruta_docx_generado_adendum, ruta_docx_generado_declaraciones, ruta_pdf_adendum, ruta_pdf_declaraciones, log_imagenes["ruta"]]
+                            log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
+                            if log_eliminar_data:
+                                pdf_base64 = GenerarPdf.pdf_a_base64(ruta_pdf)
+                                if pdf_base64:
+                                    return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64}    
+                                else:
+                                    return {"estado": False, "mensaje": "No se logro crear base64"}    
+                            else:
+                                return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}
                         else:
-                            return {"estado": False, "mensaje": "No se logro crear base64"}    
+                            return {"estado": False, "mensaje": "No se ha podido unir Adendum con Declaraciones"}    
                     else:
-                        return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}    
+                        return log_imagenes
                 else:
                     return {"estado": False, "mensaje": "Documento PDF no se puede crear"}    
             else:
@@ -57,55 +72,91 @@ class Adendum:
         else:
             return {"estado": False, "mensaje": "No hay datos en el body"}   
            
-    
-
 class Contrato:
     @staticmethod
     def generar_contrato(data):
         if data:
-            #Guardamos imagen
-            ruta_imagen = os.path.abspath("plantilla/recibo")
-            ruta_imagen_guardada = GenerarPdf.guardar_imagen_base64(data["recibo_pago"], ruta_imagen)
-            if ruta_imagen_guardada is not None:
-                data.pop("recibo_pago", None)
-                ruta_plantilla = os.path.abspath("plantilla/plantilla_contratos.docx")
-                ruta_docx_generado = os.path.abspath("plantilla/contrato_generado.docx")
-                log_reemplazar = GenerarPdf.reemplazar_texto_docx(ruta_plantilla, ruta_docx_generado, data)
-                if log_reemplazar:
-                    ruta_docx_estilos= os.path.abspath("plantilla/contrato_generado_con_estilos.docx")
-                    log_estilos = GenerarPdf.aplicar_estilos_especificos(ruta_docx_generado,ruta_docx_estilos)
-                    if log_estilos:
-                        ruta_docx_imagen = os.path.abspath("plantilla/contrato.docx")
-                        log_imagen = GenerarPdf.agregar_imagen_al_final_docx(ruta_imagen_guardada,ruta_docx_estilos,ruta_docx_imagen)
-                        if log_imagen:
-                            ruta_pdf_generado = os.path.abspath("plantilla")
-                            log_pdf = GenerarPdf.convertir_docx_a_pdf(ruta_docx_imagen, ruta_pdf_generado)
-                            if log_pdf:
-                                docs_eliminar = [ruta_docx_generado,ruta_docx_estilos, ruta_docx_imagen]
+            ruta_plantilla_contratos = os.path.abspath("plantilla/plantilla_contratos.docx")
+            ruta_plantilla_declaraciones = os.path.abspath("plantilla/plantilla_declaraciones.docx")
+            ruta_docx_generado_contratos = os.path.abspath("plantilla/contratos.docx")
+            ruta_docx_generado_declaraciones = os.path.abspath("plantilla/declaraciones.docx")
+            log_reemplazar_contratos = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_contratos, ruta_docx_generado_contratos, data)
+            log_reemplazar_declaraciones = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_declaraciones, ruta_docx_generado_declaraciones, data)
+            if log_reemplazar_contratos and log_reemplazar_declaraciones:
+                ruta_docx_generado_contratos_estilos = os.path.abspath("plantilla/contratos_estilo.docx")
+                log_estilos = GenerarPdf.aplicar_estilos_especificos(ruta_docx_generado_contratos, ruta_docx_generado_contratos_estilos)
+                if log_estilos:
+                    ruta_directorio_pdf = os.path.abspath("plantilla")
+                    ruta_pdf_contratos = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_contratos_estilos, ruta_directorio_pdf)
+                    ruta_pdf_declaraciones = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_declaraciones, ruta_directorio_pdf)
+                    if ruta_pdf_contratos and ruta_pdf_declaraciones:
+                        log_imagenes = GenerarPdf.procesar_imagenes(data["recibos_pago"])
+                        if log_imagenes["estado"] == True:
+                            pdfs_unir = [ruta_pdf_contratos, ruta_pdf_declaraciones, log_imagenes["ruta"]]
+                            ruta_pdf = os.path.abspath("plantilla/contrato_completo.pdf")
+                            log_unir_pdf = GenerarPdf.unir_pdfs(pdfs_unir, ruta_pdf)
+                            if log_unir_pdf:
+                                docs_eliminar = [ruta_docx_generado_contratos, ruta_docx_generado_declaraciones, ruta_pdf_contratos, ruta_pdf_declaraciones, log_imagenes["ruta"], ruta_docx_generado_contratos_estilos]
                                 log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
                                 if log_eliminar_data:
-                                    ruta_pdf = os.path.abspath("plantilla/contrato.pdf")
-                                    log_base64 = GenerarPdf.pdf_a_base64(ruta_pdf)
-                                    if log_base64:
-                                        return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": log_base64}    
+                                    pdf_base64 = GenerarPdf.pdf_a_base64(ruta_pdf)
+                                    if pdf_base64:
+                                        return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64}    
                                     else:
                                         return {"estado": False, "mensaje": "No se logro crear base64"}    
                                 else:
-                                    return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}    
+                                    return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}
                             else:
-                                return {"estado": False, "mensaje": "Documento PDF no se puede crear"}    
+                                return {"estado": False, "mensaje": "No se ha podido unir contratos con Declaraciones"}    
                         else:
-                            return {"estado": False, "mensaje": "No se ha podido insertar la imagen al doc"}    
+                            return log_imagenes
                     else:
-                        return {"estado": False, "mensaje": "No se ha podido aplicar estilos al doc generado"}    
+                        return {"estado": False, "mensaje": "Documento PDF no se puede crear"}
                 else:
-                    return {"estado": False, "mensaje": "No se ha podido reemplazar el texto de la plantilla"}    
+                    return {"estado": False, "mensaje": "No se ha podido aplicar estilos"}    
             else:
-                return {"estado": False, "mensaje": "No se guardo el recibo correctamente"}   
+                    return {"estado": False, "mensaje": "No se ha posido reemplazar los datos en la plantilla"}   
         else:
-            return {"estado": False, "mensaje": "No hay campos"}
+            return {"estado": False, "mensaje": "No hay datos en el body"}  
 
 class GenerarPdf:
+    @staticmethod
+    def procesar_imagenes(imagenesBase64):
+        if imagenesBase64:
+            rutas_imagenes_pdf = []
+            rutas_a_eliminar = []
+            for indice, recibo in enumerate(imagenesBase64):
+                ruta_imagen_aux = os.path.abspath("plantilla/recibo"+str(indice))
+                ruta_imagen = GenerarPdf.guardar_imagen_base64(recibo, ruta_imagen_aux)
+                rutas_a_eliminar.append(ruta_imagen)
+                if ruta_imagen:
+                    ruta_plantilla_imagen = os.path.abspath("plantilla/plantilla_imagenes.docx")
+                    ruta_docx_imagen = os.path.abspath("plantilla/recibo"+str(indice)+".docx")
+                    rutas_a_eliminar.append(ruta_docx_imagen)
+                    log_imagen_docs = GenerarPdf.agregar_imagen_docx(ruta_imagen, ruta_plantilla_imagen,ruta_docx_imagen)
+                    if log_imagen_docs:
+                        ruta_directorio_pdf_imagen = os.path.abspath("plantilla")
+                        ruta_imagen_pdf = GenerarPdf.convertir_docx_a_pdf(ruta_docx_imagen,ruta_directorio_pdf_imagen)
+                        rutas_a_eliminar.append(ruta_imagen_pdf)
+                        if ruta_imagen_pdf:
+                            rutas_imagenes_pdf.append(ruta_imagen_pdf)
+                        else:
+                            return {"estado": False, "mensaje": "Hubo un error al tranformar imagenes a pdf"}  
+                    else:
+                        return {"estado": False, "mensaje": "Hubo un error al insertar las imagenes en el documento"}
+                else:
+                    return {"estado": False, "mensaje": "Hubo un error con las imagenes adjuntadas"}
+            ruta_imagenes_unidas_pdf = os.path.abspath("plantilla/imagenes.pdf")
+            print(rutas_imagenes_pdf)
+            log_unir_imagenes = GenerarPdf.unir_pdfs(rutas_imagenes_pdf, ruta_imagenes_unidas_pdf)
+            if log_unir_imagenes:
+                GenerarPdf.eliminar_documentos(rutas_a_eliminar)
+                return {"estado": True, "mensaje": "Se proceso bien las imagenes", "ruta":ruta_imagenes_unidas_pdf}
+            else:
+                return {"estado": False, "mensaje": "Hubo un error al unir las imagenes"}
+        else:
+            return {"estado": False, "mensaje": "No hay recibos de pago"}
+
     @staticmethod
     def pdf_a_base64(ruta_pdf):
         try:
@@ -122,7 +173,19 @@ class GenerarPdf:
             print(f"Error al convertir el PDF a base64: {e}")
             return False
 
-
+    @staticmethod
+    def unir_pdfs(rutas, ruta_resultado):
+        try:
+            merger = PdfMerger()
+            for ruta in rutas:
+                merger.append(ruta)
+            merger.write(ruta_resultado)
+            merger.close()
+            return True
+        except Exception as e:
+            logging.error(f"Error al combinar los PDFs: {e}")
+            print(f"Error al combinar los PDFs: {e}")
+            return False
 
     @staticmethod
     def eliminar_documentos(rutas_documentos):
@@ -131,18 +194,14 @@ class GenerarPdf:
                 # Verificar si el archivo existe
                 if os.path.exists(ruta):
                     os.remove(ruta)  # Eliminar el archivo
-                    logging.error(f"El archivo {ruta} ha sido eliminado.")
-                    print(f"El archivo {ruta} ha sido eliminado.")
                 else:
-                    logging.error(f"El archivo {ruta} ha sido eliminado.")
+                    logging.error(f"El archivo {ruta} no existe.")
                     print(f"El archivo {ruta} no existe.")
             except Exception as e:
                 logging.error(f"Error al intentar eliminar el archivo {ruta}: {e}")
                 print(f"Error al intentar eliminar el archivo {ruta}: {e}")
                 return False
         return True
-
-
 
     @staticmethod
     def reemplazar_texto_docx(archivo_entrada, archivo_salida, variables):
@@ -227,7 +286,6 @@ class GenerarPdf:
             print(f"Error: {e}")  # Imprime el error si ocurre
             return False  # En caso de error, devolver False
 
-
     @staticmethod
     def convertir_docx_a_pdf(archivo_entrada, archivo_salida):
         try:
@@ -240,45 +298,61 @@ class GenerarPdf:
             else:
                 raise EnvironmentError("Sistema operativo no soportado")
             subprocess.run([libreoffice_path, '--headless', '--convert-to', 'pdf', archivo_entrada, '--outdir', archivo_salida])
-            return True
+            nombre_pdf = os.path.splitext(os.path.basename(archivo_entrada))[0] + ".pdf"
+            ruta_pdf_salida = os.path.join(archivo_salida, nombre_pdf)
+            if not os.path.exists(ruta_pdf_salida):
+                logging.error(f"No se pudo crear el archivo PDF en {ruta_pdf_salida}.")
+                return False
+            return ruta_pdf_salida
         except Exception as e:
             logging.error(f"Error: {e}")
             print(f"Error: {e}")  # Imprime el error si ocurre
             return False  # En caso de error, devolver False
 
-
     @staticmethod
     def guardar_imagen_base64(imagen_base64, ruta_salida):
-        match = re.match(r"data:image/(\w+);base64,(.*)", imagen_base64)
-        if not match:
-            return None
-        formato_imagen = match.group(1)
-        imagen_base64_data = match.group(2)
-        imagen_bytes = base64.b64decode(imagen_base64_data)
-        
-        with open(f"{ruta_salida}.{formato_imagen}", "wb") as f:
-            f.write(imagen_bytes)
-        ruta_imagen = f"{ruta_salida}.{formato_imagen}"
-        return ruta_imagen
-
+        try:
+            match = re.match(r"data:image/(\w+);base64,(.*)", imagen_base64)
+            if not match:
+                return False
+            formato_imagen = match.group(1)
+            imagen_base64_data = match.group(2)
+            imagen_bytes = base64.b64decode(imagen_base64_data)
+            ruta_imagen = f"{ruta_salida}.{formato_imagen}"
+            with open(f"{ruta_salida}.{formato_imagen}", "wb") as f:
+                f.write(imagen_bytes)
+            return ruta_imagen
+        except Exception as e:
+            logging.error(f"Error: {e}")
+            print(f"Error al guardar la imagen: {e}")
+            return False  
 
     @staticmethod
-    def agregar_imagen_al_final_docx(ruta_imagen_guardada, ruta_docx_estilos, ruta_docx_imagen):
+    def agregar_imagen_docx(ruta_imagen, ruta_plantilla, ruta_salida):
         try:
-            doc = Document(ruta_docx_estilos)
-            with Image.open(ruta_imagen_guardada) as img:
+            # Cargar la plantilla del documento
+            doc = Document(ruta_plantilla)
+            
+            # Abrir la imagen y obtener sus dimensiones
+            with Image.open(ruta_imagen) as img:
                 width, height = img.size
+                
+                # Ajustar dimensiones de la imagen
                 if height > width:  # Si la imagen es más alta que ancha
-                    alto = Inches(9)
+                    alto = Cm(19)
                     ancho = (width / height) * alto
                 else:  # Si la imagen es más ancha que alta
-                    ancho = Inches(6)
+                    ancho = Cm(13)
                     alto = (height / width) * ancho
-                paragraph = doc.add_paragraph()  # Crear un nuevo párrafo
+                
+                # Insertar la imagen al principio del documento
+                paragraph = doc.add_paragraph()  # Crear un nuevo párrafo al inicio
                 run = paragraph.add_run()  # Crear un "run" en el párrafo
-                run.add_picture(ruta_imagen_guardada, width=ancho, height=alto)  # Ajustar el tamaño proporcional de la imagen
-                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-            doc.save(ruta_docx_imagen)
+                run.add_picture(ruta_imagen, width=ancho, height=alto)  # Insertar la imagen con tamaño ajustado
+                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER  # Centrar el párrafo
+            
+            # Guardar el documento con la imagen añadida al principio
+            doc.save(ruta_salida)
             return True
         except Exception as e:
             logging.error(f"Error: {e}")
