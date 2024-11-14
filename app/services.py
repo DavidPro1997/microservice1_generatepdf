@@ -7,9 +7,10 @@ import subprocess
 import sys
 import base64
 from PIL import Image # type: ignore
-import re
+import re, mimetypes
 import logging
 from PyPDF2 import PdfMerger # type: ignore
+from io import BytesIO
 
 logging.basicConfig(
     filename = os.path.abspath("logs/output.log"), 
@@ -21,13 +22,48 @@ logging.basicConfig(
 class Switch:
     @staticmethod
     def verificar_tipo_doc(data):
-        logging.info("Este es un mensaje informativo.")
+        logging.info("Realizando servicio de creacion de pdf")
         if data["tipo"] == "contrato":
             return Contrato.generar_contrato(data)
         elif data["tipo"] == "adendum":
             return Adendum.generar_adendum(data)
         else:
             return {"estado": False, "mensaje": "No se reconoce el tipo de archivo"}
+
+    @staticmethod
+    def verificar_tipo_doc_descarga(id):
+        logging.info("Realizacion de servicio de descarga de plantilla")
+        # 0 = contratos, 1 = adendum, 2 = declaraciones
+        if id == 0:
+            ruta = os.path.abspath("plantilla/plantilla_contratos.docx")
+        elif id == 1:
+            ruta = os.path.abspath("plantilla/plantilla_adendum.docx")
+        elif id == 2:
+            ruta = os.path.abspath("plantilla/plantilla_declaraciones.docx")
+        else:
+            return {"estado": False, "mensaje": "No se reconoce el tipo de archivo"}
+        return Descarga.descargar_documento(ruta)
+
+    @staticmethod
+    def verificar_tipo_doc_plantilla(data,id):
+        logging.info("Realizacion de servicio de actualizacion de plantilla")
+        if data["archivo"]:
+            # 0 = contratos, 1 = adendum, 2 = declaraciones
+            if id == 0:
+                ruta = os.path.abspath("plantilla/plantilla_contratos.docx")
+            elif id == 1:
+                ruta = os.path.abspath("plantilla/plantilla_adendum.docx")
+            elif id == 2:
+                ruta = os.path.abspath("plantilla/plantilla_declaraciones.docx")
+            else:
+                return {"estado": False, "mensaje": "No se reconoce el tipo de archivo"}
+            log_guardar = Guardar.guardar_archivo(ruta,data["archivo"])
+            if log_guardar:
+                return {"estado": True, "mensaje": "Se ha modificado la plantilla correctamente"}
+            else:
+                return {"estado": False, "mensaje": "No se ha podido guardar el archivo"}
+        else:
+           return {"estado": False, "mensaje": "No se envio ningun archivo"} 
 
 
 class Adendum:
@@ -54,7 +90,7 @@ class Adendum:
                             docs_eliminar = [ruta_docx_generado_adendum, ruta_docx_generado_declaraciones, ruta_pdf_adendum, ruta_pdf_declaraciones, log_imagenes["ruta"]]
                             log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
                             if log_eliminar_data:
-                                pdf_base64 = GenerarPdf.pdf_a_base64(ruta_pdf)
+                                pdf_base64 = GenerarPdf.archivo_a_base64(ruta_pdf)
                                 if pdf_base64:
                                     return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64}    
                                 else:
@@ -99,7 +135,7 @@ class Contrato:
                                 docs_eliminar = [ruta_docx_generado_contratos, ruta_docx_generado_declaraciones, ruta_pdf_contratos, ruta_pdf_declaraciones, log_imagenes["ruta"], ruta_docx_generado_contratos_estilos]
                                 log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
                                 if log_eliminar_data:
-                                    pdf_base64 = GenerarPdf.pdf_a_base64(ruta_pdf)
+                                    pdf_base64 = GenerarPdf.archivo_a_base64(ruta_pdf)
                                     if pdf_base64:
                                         return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64}    
                                     else:
@@ -158,15 +194,15 @@ class GenerarPdf:
             return {"estado": False, "mensaje": "No hay recibos de pago"}
 
     @staticmethod
-    def pdf_a_base64(ruta_pdf):
+    def archivo_a_base64(ruta_archivo):
         try:
-            with open(ruta_pdf, "rb") as archivo_pdf:
-                contenido_pdf = archivo_pdf.read()
-                contenido_base64 = base64.b64encode(contenido_pdf).decode('utf-8')
+            with open(ruta_archivo, "rb") as archivo:
+                contenido = archivo.read()
+                contenido_base64 = base64.b64encode(contenido).decode('utf-8')
                 return contenido_base64
         except FileNotFoundError:
-            logging.error(f"El archivo {ruta_pdf} no se encuentra.")
-            print(f"El archivo {ruta_pdf} no se encuentra.")
+            logging.error(f"El archivo {ruta_archivo} no se encuentra.")
+            print(f"El archivo {ruta_archivo} no se encuentra.")
             return False
         except Exception as e:
             logging.error(f"Error al convertir el PDF a base64: {e}")
@@ -358,3 +394,29 @@ class GenerarPdf:
             logging.error(f"Error: {e}")
             print(f"Error: {e}")  # Imprime el error si ocurre
             return False  # En caso de error, devolver False
+        
+class Descarga:
+    @staticmethod
+    def descargar_documento(ruta):
+        base64 = GenerarPdf.archivo_a_base64(ruta)
+        if base64:
+            return {"estado": True, "mensaje": "Archivo obtenido con exito", "archivo": base64}   
+        else:
+            return {"estado": False, "mensaje": "No se ha podido codificar el archivo"}   
+        
+class Guardar:
+    @staticmethod
+    def guardar_archivo(ruta_guardar, base64_string):
+        try:
+            contenido_binario = base64.b64decode(base64_string)
+            archivo_docx = BytesIO(contenido_binario)
+            doc = Document(archivo_docx)
+            directorio = os.path.dirname(ruta_guardar)
+            if not os.path.exists(directorio):
+                os.makedirs(directorio)
+            doc.save(ruta_guardar)
+            return True
+        except Exception as e:
+            logging.error(f"Error al guardar el archivo: {e}")
+            print(f"Error al guardar el archivo: {e}")
+            return False     
