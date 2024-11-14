@@ -7,9 +7,8 @@ app = Flask(__name__)
 def index():
     return "¡Bienvenido al generador de pdfs!"
 
-@app.route('/ejemplo1', methods=['POST'])
-def ejemplo1():
-    print("consultando...")
+@app.route('/crearpdf', methods=['POST'])
+def crear_pdf():
     data = request.json
     respuesta = Switch.verificar_tipo_doc(data)
     return jsonify(respuesta)
