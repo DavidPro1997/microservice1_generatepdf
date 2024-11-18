@@ -22,11 +22,14 @@ logging.basicConfig(
 class Switch:
     @staticmethod
     def verificar_tipo_doc(data):
+        print("Realizando servicio de creacion de pdf")
         logging.info("Realizando servicio de creacion de pdf")
         if data["tipo"] == "contrato":
             return Contrato.generar_contrato(data)
         elif data["tipo"] == "adendum":
             return Adendum.generar_adendum(data)
+        elif data["tipo"] == "cotizar_vuelo":
+            return Cotizador.cotizar_vuelos(data)
         else:
             return {"estado": False, "mensaje": "No se reconoce el tipo de archivo"}
 
@@ -65,6 +68,40 @@ class Switch:
         else:
            return {"estado": False, "mensaje": "No se envio ningun archivo"} 
 
+class Cotizador:
+    @staticmethod
+    def cotizar_vuelos(data):
+        if data:
+            detalle_vuelos_ida = data["detalle_ida_vuelos"]
+            detalle_vuelos_vuelta = data["detalle_vuelta_vuelos"]
+            data.pop("detalle_ida_vuelos")
+            data.pop("detalle_vuelta_vuelos")
+            ruta_plantilla_cotizador_vuelos = os.path.abspath("plantilla/plantilla_cotizar_vuelos.docx")
+            ruta_docx_generado_cotizacion_vuelos_ida = os.path.abspath("plantilla/cotizacion_vuelos_ida.docx")
+            ruta_docx_generado_cotizacion_vuelos_vuelta = os.path.abspath("plantilla/cotizacion_vuelos_vuelta.docx")
+            ruta_docx_generado_cotizacion_vuelos = os.path.abspath("plantilla/cotizacion_vuelos.docx")
+            estilos_tabla = {"fuente": "Helvetica", "numero":8}
+            log_vuelos_ida = GenerarPdf.armar_tabla_vuelos(ruta_plantilla_cotizador_vuelos, ruta_docx_generado_cotizacion_vuelos_ida,"[detalle_ida_vuelos]",detalle_vuelos_ida ,estilos_tabla)
+            log_vuelos_vuelta = GenerarPdf.armar_tabla_vuelos(ruta_docx_generado_cotizacion_vuelos_ida, ruta_docx_generado_cotizacion_vuelos_vuelta,"[detalle_vuelta_vuelos]",detalle_vuelos_vuelta ,estilos_tabla)
+            log_reemplazar_cotitazion = GenerarPdf.reemplazar_texto_docx(ruta_docx_generado_cotizacion_vuelos_vuelta, ruta_docx_generado_cotizacion_vuelos, data, estilos_tabla)
+            if log_reemplazar_cotitazion and log_vuelos_ida and log_vuelos_vuelta:
+                ruta_directorio_pdf = os.path.abspath("plantilla")
+                ruta_pdf_cotizacion_vuelos = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_cotizacion_vuelos, ruta_directorio_pdf)
+                if ruta_pdf_cotizacion_vuelos:
+                    docs_eliminar = [ruta_docx_generado_cotizacion_vuelos, ruta_docx_generado_cotizacion_vuelos_ida, ruta_docx_generado_cotizacion_vuelos_vuelta]
+                    log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
+                    if log_eliminar_data:
+                        pdf_base64 = GenerarPdf.archivo_a_base64(ruta_pdf_cotizacion_vuelos)
+                        if pdf_base64:
+                            return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64}    
+                        else:
+                            return {"estado": False, "mensaje": "No se logro crear base64"}    
+                    else:
+                        return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}
+            else:
+                    return {"estado": False, "mensaje": "No se ha posido reemplazar los datos en la plantilla"}   
+        else:
+            return {"estado": False, "mensaje": "No hay datos en el body"}  
 
 class Adendum:
     @staticmethod
@@ -74,8 +111,9 @@ class Adendum:
             ruta_plantilla_declaraciones = os.path.abspath("plantilla/plantilla_declaraciones.docx")
             ruta_docx_generado_adendum = os.path.abspath("plantilla/adendum.docx")
             ruta_docx_generado_declaraciones = os.path.abspath("plantilla/declaraciones.docx")
-            log_reemplazar_adendum = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_adendum, ruta_docx_generado_adendum, data)
-            log_reemplazar_declaraciones = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_declaraciones, ruta_docx_generado_declaraciones, data)
+            estilos = {"fuente": "Helvetica", "numero":10}
+            log_reemplazar_adendum = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_adendum, ruta_docx_generado_adendum, data, estilos)
+            log_reemplazar_declaraciones = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_declaraciones, ruta_docx_generado_declaraciones, data, estilos)
             if log_reemplazar_adendum and log_reemplazar_declaraciones:
                 ruta_directorio_pdf = os.path.abspath("plantilla")
                 ruta_pdf_adendum = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_adendum, ruta_directorio_pdf)
@@ -116,8 +154,9 @@ class Contrato:
             ruta_plantilla_declaraciones = os.path.abspath("plantilla/plantilla_declaraciones.docx")
             ruta_docx_generado_contratos = os.path.abspath("plantilla/contratos.docx")
             ruta_docx_generado_declaraciones = os.path.abspath("plantilla/declaraciones.docx")
-            log_reemplazar_contratos = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_contratos, ruta_docx_generado_contratos, data)
-            log_reemplazar_declaraciones = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_declaraciones, ruta_docx_generado_declaraciones, data)
+            estilos = {"fuente": "Helvetica", "numero":10}
+            log_reemplazar_contratos = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_contratos, ruta_docx_generado_contratos, data, estilos)
+            log_reemplazar_declaraciones = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_declaraciones, ruta_docx_generado_declaraciones, data, estilos)
             if log_reemplazar_contratos and log_reemplazar_declaraciones:
                 ruta_docx_generado_contratos_estilos = os.path.abspath("plantilla/contratos_estilo.docx")
                 log_estilos = GenerarPdf.aplicar_estilos_especificos(ruta_docx_generado_contratos, ruta_docx_generado_contratos_estilos)
@@ -240,7 +279,7 @@ class GenerarPdf:
         return True
 
     @staticmethod
-    def reemplazar_texto_docx(archivo_entrada, archivo_salida, variables):
+    def reemplazar_texto_docx(archivo_entrada, archivo_salida, variables, estilos):
         try:
             doc = Document(archivo_entrada)
             for para in doc.paragraphs:
@@ -251,8 +290,8 @@ class GenerarPdf:
                     if marcador in para.text:
                         para.text = para.text.replace(marcador, str(valor))
                         for run in para.runs:
-                            run.font.name = 'Helvetica'
-                            run.font.size = Pt(10)
+                            run.font.name = estilos["fuente"]
+                            run.font.size = Pt(estilos["numero"])
 
             #Recorrer las tablas del documento
             for tabla in doc.tables:
@@ -262,19 +301,60 @@ class GenerarPdf:
                             for var, valor in variables.items():
                                 if isinstance(valor, list):  # Si el valor es una lista
                                     valor = "\n".join(valor)  # Une los elementos de la lista con saltos de línea
-                                
                                 marcador = f"[{var}]"
                                 if marcador in para.text:
                                     para.text = para.text.replace(marcador, str(valor))
                                     for run in para.runs:
-                                        run.font.name = 'Helvetica'
-                                        run.font.size = Pt(10)
+                                        run.font.name = estilos["fuente"]
+                                        run.font.size = Pt(estilos["numero"])
             doc.save(archivo_salida)
             return True
         except Exception as e:
             logging.error(f"Error: {e}")
             print(f"Error: {e}")  # Imprime el error si ocurre
             return False  # En caso de error, devolver False
+        
+
+    @staticmethod
+    def armar_tabla_vuelos(archivo_entrada, archivo_salida, variable,datos ,estilos):
+        columnas = ["clase","detalle_salida","duracion","detalle_destino"]
+        numeroFilas = len(datos)
+        try:
+            doc = Document(archivo_entrada)
+            for para in doc.paragraphs:
+                if variable in para.text:
+                    para.clear()
+                    table = doc.add_table(rows=numeroFilas, cols=4)
+                    table.style = 'Plain Table 2'
+                    for i, row in enumerate(table.rows):
+                        for j, cell in enumerate(row.cells):
+                            if i < len(datos):  # Validar que exista la fila
+                                clave = columnas[j]  # Obtener la clave correspondiente a la columna
+                                if clave in datos[i]:  # Validar que la clave exista en el diccionario
+                                    valor = datos[i][clave]                                   
+                                    if isinstance(valor, list):  
+                                        valor = "\n".join(valor)
+                                    cell.text = valor
+                                    for paragraph in cell.paragraphs:
+                                        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                                    for run in paragraph.runs:
+                                        run.bold = False  # Esto quita la negrita
+                    table_element = table._element
+                    para._element.addnext(table_element)
+                    for row in table.rows:
+                        for cell in row.cells:
+                            for paragraph in cell.paragraphs:
+                                for run in paragraph.runs:
+                                    run.font.name = estilos["fuente"]
+                                    run.font.size = Pt(estilos["numero"])
+            doc.save(archivo_salida)
+            return True
+        except Exception as e:
+            logging.error(f"Error: {e}")
+            print(f"Error: {e}")  # Imprime el error si ocurre
+            return False  # En caso de error, devolver False
+
+
         
     @staticmethod
     def aplicar_estilos_especificos(archivo_entrada, archivo_salida):
