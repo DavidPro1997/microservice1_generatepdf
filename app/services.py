@@ -529,25 +529,29 @@ class Imagen:
                     Imagen.colocar_texto_a_imagen(idVuelo,(96,altura),ruta_imagen_generada,ruta_imagen_generada,13)
                     texto_horas = data["codigo_salida"]+": "+vuelo["hora_salida"]+" ---> "+data["codigo_destino"]+": "+vuelo["hora_llegada"]
                     Imagen.colocar_texto_a_imagen(texto_horas,(144,altura),ruta_imagen_generada,ruta_imagen_generada,15)
-                    Imagen.colocar_texto_a_imagen(vuelo["duracion"],(500,altura),ruta_imagen_generada,ruta_imagen_generada,15)
-                    ruta_personal = Imagen.sacar_equipaje("personal",vuelo["equipaje_personal"])
-                    ruta_carry = Imagen.sacar_equipaje("carry",vuelo["equipaje_carry"])
-                    ruta_bodega = Imagen.sacar_equipaje("bodega",vuelo["equipaje_bodega"])
+                    Imagen.colocar_texto_a_imagen(vuelo["duracion"],(400,altura),ruta_imagen_generada,ruta_imagen_generada,15)
+                    escalas = str(vuelo["numero_escalas"])+ " Escala(s)"
+                    Imagen.colocar_texto_a_imagen(escalas,(500,altura),ruta_imagen_generada,ruta_imagen_generada,15)
+                    ruta_personal = Imagen.sacar_equipaje("personal",int(vuelo["equipaje_personal"]))
+                    ruta_carry = Imagen.sacar_equipaje("carry",int(vuelo["equipaje_carry"]))
+                    ruta_bodega = Imagen.sacar_equipaje("bodega",int(vuelo["equipaje_bodega"]))
                     Imagen.colocar_imagen_pequena(ruta_personal, (700,altura-3), ruta_imagen_generada, ruta_imagen_generada,18,18)
                     Imagen.colocar_imagen_pequena(ruta_carry, (720,altura-4), ruta_imagen_generada, ruta_imagen_generada,20,20)
                     Imagen.colocar_imagen_pequena(ruta_bodega, (740,altura-4), ruta_imagen_generada, ruta_imagen_generada,20,20)
                     altura = altura +52
-            altura = 357
+            altura = 358
             for index, vuelo in enumerate(data["vuelos_vuelta"]):
                 if index<3:
                     idVuelo = "v"+str(index+1)
                     Imagen.colocar_texto_a_imagen(idVuelo,(96,altura),ruta_imagen_generada,ruta_imagen_generada,13)
                     texto_horas = data["codigo_salida"]+": "+vuelo["hora_salida"]+" ---> "+data["codigo_destino"]+": "+vuelo["hora_llegada"]
                     Imagen.colocar_texto_a_imagen(texto_horas,(144,altura),ruta_imagen_generada,ruta_imagen_generada,15)
-                    Imagen.colocar_texto_a_imagen(vuelo["duracion"],(500,altura),ruta_imagen_generada,ruta_imagen_generada,15)
-                    ruta_personal = Imagen.sacar_equipaje("personal",vuelo["equipaje_personal"])
-                    ruta_carry = Imagen.sacar_equipaje("carry",vuelo["equipaje_carry"])
-                    ruta_bodega = Imagen.sacar_equipaje("bodega",vuelo["equipaje_bodega"])
+                    Imagen.colocar_texto_a_imagen(vuelo["duracion"],(400,altura),ruta_imagen_generada,ruta_imagen_generada,15)
+                    escalas = str(vuelo["numero_escalas"])+ " Escala(s)"
+                    Imagen.colocar_texto_a_imagen(escalas,(500,altura),ruta_imagen_generada,ruta_imagen_generada,15)
+                    ruta_personal = Imagen.sacar_equipaje("personal",int(vuelo["equipaje_personal"]))
+                    ruta_carry = Imagen.sacar_equipaje("carry",int(vuelo["equipaje_carry"]))
+                    ruta_bodega = Imagen.sacar_equipaje("bodega",int(vuelo["equipaje_bodega"]))
                     Imagen.colocar_imagen_pequena(ruta_personal, (700,altura-3), ruta_imagen_generada, ruta_imagen_generada,18,18)
                     Imagen.colocar_imagen_pequena(ruta_carry, (720,altura-4), ruta_imagen_generada, ruta_imagen_generada,20,20)
                     Imagen.colocar_imagen_pequena(ruta_bodega, (740,altura-4), ruta_imagen_generada, ruta_imagen_generada,20,20)
@@ -564,15 +568,13 @@ class Imagen:
     @staticmethod
     def convertir_imagen_a_base64(ruta_imagen):
         try:
-            # Abrir la imagen en modo binario
             with open(ruta_imagen, "rb") as imagen:
-                # Leer los datos binarios de la imagen
                 datos_imagen = imagen.read()
-                # Convertir los datos binarios a Base64
                 base64_imagen = base64.b64encode(datos_imagen).decode("utf-8")
             return base64_imagen
         except Exception as e:
             print(f"Ocurrió un error: {e}")
+            logging.error(f"Ocurrió un error: {e}")
             return False
 
 
@@ -580,23 +582,15 @@ class Imagen:
     @staticmethod
     def colocar_texto_a_imagen(texto,coordenadas,ruta_imagen, ruta_salida,fuente):
         try:
-            # Cargar la imagen
             imagen = Image.open(ruta_imagen)
-
-            # Crear un objeto de dibujo
             draw = ImageDraw.Draw(imagen)
-
-            # Configurar la fuente (asegúrate de que "arial.ttf" esté disponible en tu sistema)
             fuente = ImageFont.truetype("arial.ttf", fuente)
-
-            # Dibujar el texto en las coordenadas especificadas
             draw.text(coordenadas, texto, fill="black", font=fuente)
-
-            # Guardar la imagen modificada
             imagen.save(ruta_salida)
             return True
         except Exception as e:
             print(f"Ocurrió un error: {e}") 
+            logging.error(f"Ocurrió un error: {e}")
             return False
 
 
@@ -620,17 +614,17 @@ class Imagen:
     @staticmethod
     def sacar_equipaje(tipo,id):
         if tipo == "personal":
-            if id == "1":
+            if id >= 1:
                 return os.path.abspath("img/equipaje/si_personal.png")
             else:
                 return os.path.abspath("img/equipaje/no_personal.png")
         elif tipo == 'carry':
-            if id == "1":
+            if id >= 1:
                 return os.path.abspath("img/equipaje/si_carry.png")
             else:
                 return os.path.abspath("img/equipaje/no_carry.png")
         elif tipo == 'bodega':
-            if id == "1":
+            if id >= 1:
                 return os.path.abspath("img/equipaje/si_bodega.png")
             else:
                 return os.path.abspath("img/equipaje/no_bodega.png")       
@@ -664,4 +658,5 @@ class Imagen:
             # Guardar la imagen resultante
             fondo_blanco.save(ruta_salida)            
         except Exception as e:
-            print(f"Ocurrió un error: {e}")    
+            print(f"Ocurrió un error: {e}") 
+            logging.error(f"Ocurrió un error: {e}")   
