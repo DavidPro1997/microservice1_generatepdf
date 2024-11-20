@@ -26,3 +26,11 @@ def subir_plantilla(id):
     data = request.json
     respuesta = Switch.verificar_tipo_doc_plantilla(data,id)
     return jsonify(respuesta)
+
+
+
+@app.route('/crearImagen', methods=['POST'])
+def crear_imagen():
+    data = request.json
+    respuesta = Switch.verificar_tipo_doc(data)
+    return jsonify(respuesta)
