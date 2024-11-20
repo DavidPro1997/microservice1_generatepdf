@@ -4,7 +4,7 @@ from docx.shared import Pt # type: ignore
 from docx.shared import Cm # type: ignore
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT # type: ignore
 import subprocess
-import sys
+import sys, platform
 import base64
 from PIL import Image # type: ignore
 import re, mimetypes
@@ -24,14 +24,17 @@ class Switch:
     @staticmethod
     def verificar_tipo_doc(data):
         print("Realizando servicio de creacion de pdf")
-        logging.info("Realizando servicio de creacion de pdf")
         if data["tipo"] == "contrato":
+            logging.info("Realizando servicio de creacion de pdf")
             return Contrato.generar_contrato(data)
         elif data["tipo"] == "adendum":
+            logging.info("Realizando servicio de creacion de pdf")
             return Adendum.generar_adendum(data)
         elif data["tipo"] == "cotizar_vuelo":
+            logging.info("Realizando servicio de creacion de pdf")
             return Cotizador.cotizar_vuelos(data)
         elif data["tipo"] == "cotizar_vuelo_imagen":
+            logging.info("Realizando servicio de creacion de imagen")
             return Imagen.cotizar_vuelos(data)
         else:
             return {"estado": False, "mensaje": "No se reconoce el tipo de archivo"}
@@ -582,9 +585,25 @@ class Imagen:
     @staticmethod
     def colocar_texto_a_imagen(texto,coordenadas,ruta_imagen, ruta_salida,fuente):
         try:
+            sistema_operativo = platform.system()
+        
+            # Configurar la ruta de la fuente según el sistema operativo
+            if sistema_operativo == "Windows":
+                ruta_fuente = "C:/Windows/Fonts/arial.ttf"  # Ruta típica en Windows
+            elif sistema_operativo == "Linux":
+                ruta_fuente = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"  # Fuente común en Linux
+            else:
+                logging.error("Sistema operativo no soportado para fuentes predeterminadas.")
+                raise OSError("Sistema operativo no soportado para fuentes predeterminadas.")
+            
+            # Verificar que la fuente exista
+            if not os.path.exists(ruta_fuente):
+                logging.error(f"La fuente no se encuentra en {ruta_fuente}")
+                raise FileNotFoundError(f"La fuente no se encuentra en {ruta_fuente}")
+
             imagen = Image.open(ruta_imagen)
             draw = ImageDraw.Draw(imagen)
-            fuente = ImageFont.truetype("arial.ttf", fuente)
+            fuente = ImageFont.truetype(ruta_fuente, fuente)
             draw.text(coordenadas, texto, fill="black", font=fuente)
             imagen.save(ruta_salida)
             return True
