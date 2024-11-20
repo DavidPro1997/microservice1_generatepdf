@@ -590,7 +590,7 @@ class Imagen:
             return True
         except Exception as e:
             print(f"Ocurrió un error: {e}") 
-            logging.error(f"Ocurrió un error: {e}")
+            logging.error(f"Ocurrió un error: al colocar texto{e}")
             return False
 
 
@@ -659,4 +659,4 @@ class Imagen:
             fondo_blanco.save(ruta_salida)            
         except Exception as e:
             print(f"Ocurrió un error: {e}") 
-            logging.error(f"Ocurrió un error: {e}")   
+            logging.error(f"Ocurrió un error al colocar imagenes: {e}")   
