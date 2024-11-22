@@ -338,7 +338,7 @@ class GenerarPdf:
 
                     for diccionario in datos:
                         # Crear una tabla para cada diccionario
-                        table = doc.add_table(rows=4, cols=4)
+                        table = doc.add_table(rows=5, cols=4)
                         table.style = 'Table Grid'
                         for row in table.rows:
                             for cell in row.cells:
