@@ -12,6 +12,8 @@ import logging
 from PyPDF2 import PdfMerger # type: ignore
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont # type: ignore
+from docx.oxml.ns import nsdecls # type: ignore
+from docx.oxml import parse_xml # type: ignore
 
 logging.basicConfig(
     filename = os.path.abspath("logs/output.log"), 
@@ -23,7 +25,6 @@ logging.basicConfig(
 class Switch:
     @staticmethod
     def verificar_tipo_doc(data):
-        print("Realizando servicio de creacion de pdf")
         if data["tipo"] == "contrato":
             logging.info("Realizando servicio de creacion de pdf")
             return Contrato.generar_contrato(data)
@@ -36,6 +37,9 @@ class Switch:
         elif data["tipo"] == "cotizar_vuelo_imagen":
             logging.info("Realizando servicio de creacion de imagen")
             return Imagen.cotizar_vuelos(data)
+        elif data["tipo"] == "voucher_hotel":
+            logging.info("Realizando servicio de creacion de voucher")
+            return Hotel.generar_voucher(data)
         else:
             return {"estado": False, "mensaje": "No se reconoce el tipo de archivo"}
 
@@ -104,8 +108,10 @@ class Cotizador:
                             return {"estado": False, "mensaje": "No se logro crear base64"}    
                     else:
                         return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}
+                else:
+                    return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"}   
             else:
-                    return {"estado": False, "mensaje": "No se ha posido reemplazar los datos en la plantilla"}   
+                return {"estado": False, "mensaje": "No se ha posido reemplazar los datos en la plantilla"}   
         else:
             return {"estado": False, "mensaje": "No hay datos en el body"}  
 
@@ -291,7 +297,7 @@ class GenerarPdf:
             for para in doc.paragraphs:
                 for var, valor in variables.items():
                     if isinstance(valor, list):  # Si el valor es una lista (como paquete_incluye)
-                        valor = "\n".join(valor)  # Une los elementos de la lista con saltos de línea
+                        valor = "\n".join(str(item) if isinstance(item, dict) else item for item in valor)
                     marcador = f"[{var}]"
                     if marcador in para.text:
                         para.text = para.text.replace(marcador, str(valor))
@@ -306,7 +312,7 @@ class GenerarPdf:
                         for para in celda.paragraphs:
                             for var, valor in variables.items():
                                 if isinstance(valor, list):  # Si el valor es una lista
-                                    valor = "\n".join(valor)  # Une los elementos de la lista con saltos de línea
+                                    valor = "\n".join(str(item) if isinstance(item, dict) else item for item in valor)
                                 marcador = f"[{var}]"
                                 if marcador in para.text:
                                     para.text = para.text.replace(marcador, str(valor))
@@ -320,6 +326,93 @@ class GenerarPdf:
             print(f"Error: {e}")  # Imprime el error si ocurre
             return False  # En caso de error, devolver False
         
+
+    @staticmethod
+    def crear_tabla_rooms(archivo_entrada, archivo_salida, variable, datos, estilos):
+        try:
+            doc = Document(archivo_entrada)
+
+            for para in doc.paragraphs:
+                if variable in para.text:
+                    para.clear()  # Eliminar el contenido del párrafo con la variable
+
+                    for diccionario in datos:
+                        # Crear una tabla para cada diccionario
+                        table = doc.add_table(rows=4, cols=4)
+                        table.style = 'Table Grid'
+                        for row in table.rows:
+                            for cell in row.cells:
+                                tc = cell._element
+                                tc_pr = tc.get_or_add_tcPr()
+                                tc_borders = parse_xml(r'''
+                                    <w:tcBorders %s>
+                                        <w:top w:val="single" w:sz="4" w:space="0" w:color="E7E6E6"/>
+                                        <w:left w:val="single" w:sz="4" w:space="0" w:color="E7E6E6"/>
+                                        <w:bottom w:val="single" w:sz="4" w:space="0" w:color="E7E6E6"/>
+                                        <w:right w:val="single" w:sz="4" w:space="0" w:color="E7E6E6"/>
+                                    </w:tcBorders>''' % nsdecls('w'))
+                                tc_pr.append(tc_borders)
+                                # Establecer el color de fondo de la celda
+                                shading_elm = parse_xml(r'<w:shd {} w:fill="E7E6E6"/>'.format(nsdecls('w')))
+                                tc_pr.append(shading_elm)
+                        pares = list(diccionario.items())
+                        for row_idx, row in enumerate(table.rows):
+                            for col_idx, cell in enumerate(row.cells):
+                                # Asignar las claves y valores según la posición
+                                index = row_idx * 2 + col_idx // 2
+                                if index < len(pares):
+                                    clave, valor = pares[index]
+                                    if col_idx % 2 == 0:
+                                        cell.text = GenerarPdf.traducir_palabras(clave)  # Clave en columna izquierda
+                                        # Aplicar negrita en la columna de claves
+                                        for paragraph in cell.paragraphs:
+                                            paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+                                            for run in paragraph.runs:
+                                                run.bold = True
+                                    else:
+                                        cell.text = str(valor)  # Valor en columna derecha
+
+                                    # Aplicar estilos generales
+                                    for paragraph in cell.paragraphs:
+                                        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+                                        for run in paragraph.runs:
+                                            run.font.name = estilos["fuente"]
+                                            run.font.size = Pt(estilos["numero"])
+
+                        # Insertar un párrafo vacío y luego la tabla
+                        empty_paragraph = para.insert_paragraph_before()
+                        empty_paragraph.text = ""  # Salto de línea entre tablas
+                        table_element = table._element
+                        empty_paragraph._element.addnext(table_element)  # Agregar la tabla después del párrafo vacío
+
+            doc.save(archivo_salida)
+            return True
+        except Exception as e:
+            logging.error(f"Error: {e}")
+            print(f"Error: {e}")  # Imprime el error si ocurre
+            return False  # En caso de error, devolver False
+
+
+    @staticmethod
+    def traducir_palabras(palabra):
+        if palabra == "room_name":
+            return "Nombre habitación:"
+        elif palabra == "acomodation":
+            return "Acomodación:"
+        elif palabra == "name_pax":
+            return "Pasajero:"
+        elif palabra == "adults":
+            return "Adultos:"
+        elif palabra == "children":
+            return "Niños"
+        elif palabra == "age_children":
+            return "Edad niños:"
+        elif palabra == "board_basis":
+            return "Descripción:"
+        elif palabra == "room_number":
+            return "Número habitación:"
+        else:
+            return palabra
 
     @staticmethod
     def armar_tabla_vuelos(archivo_entrada, archivo_salida, variable,datos ,estilos):
@@ -650,8 +743,6 @@ class Imagen:
         
 
 
-
-
     @staticmethod
     def colocar_imagen_pequena(imagen_pequena, coordenadas, ruta_imagen, ruta_salida, ancho_pequena, alto_pequena):
         try:
@@ -678,4 +769,41 @@ class Imagen:
             fondo_blanco.save(ruta_salida)            
         except Exception as e:
             print(f"Ocurrió un error: {e}") 
-            logging.error(f"Ocurrió un error al colocar imagenes: {e}")   
+            logging.error(f"Ocurrió un error al colocar imagenes: {e}")  
+
+
+class Hotel:
+    @staticmethod
+    def generar_voucher(data):
+        if data:
+            rooms = data["rooms"]
+            data.pop("rooms")
+            ruta_plantilla_voucher = os.path.abspath("plantilla/plantilla_voucher_hotel.docx")
+            ruta_docx_generado_tabla = os.path.abspath("plantilla/voucher_tabla.docx")
+            estilos = {"fuente": "Helvetica", "numero":10}
+            log_tabla_rooms = GenerarPdf.crear_tabla_rooms(ruta_plantilla_voucher,ruta_docx_generado_tabla,"[rooms]", rooms, estilos)
+            if log_tabla_rooms:
+                ruta_docx_generado_voucher = os.path.abspath("plantilla/voucher.docx")
+                log_reemplazar_cotitazion = GenerarPdf.reemplazar_texto_docx(ruta_docx_generado_tabla, ruta_docx_generado_voucher, data, estilos)
+                if log_reemplazar_cotitazion:
+                    ruta_directorio_pdf = os.path.abspath("plantilla")
+                    ruta_pdf_cotizacion_vuelos = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_voucher, ruta_directorio_pdf)
+                    if ruta_pdf_cotizacion_vuelos:
+                        docs_eliminar = [ruta_docx_generado_voucher,ruta_docx_generado_tabla]
+                        log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
+                        if log_eliminar_data:
+                            pdf_base64 = GenerarPdf.archivo_a_base64(ruta_pdf_cotizacion_vuelos)
+                            if pdf_base64:
+                                return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64}    
+                            else:
+                                return {"estado": False, "mensaje": "No se logro crear base64"}    
+                        else:
+                            return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}
+                    else:
+                        return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"}   
+                else:
+                    return {"estado": False, "mensaje": "No se ha posido reemplazar los datos en la plantilla"}
+            else:
+                return {"estado": False, "mensaje": "No se logro armar la tabla"} 
+        else:
+            return {"estado": False, "mensaje": "No hay datos en el body"}
