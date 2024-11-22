@@ -771,7 +771,6 @@ class Imagen:
             print(f"Ocurrió un error: {e}") 
             logging.error(f"Ocurrió un error al colocar imagenes: {e}")  
 
-
 class Hotel:
     @staticmethod
     def generar_voucher(data):
