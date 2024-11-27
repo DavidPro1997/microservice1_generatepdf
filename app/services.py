@@ -329,6 +329,7 @@ class GenerarPdf:
 
     @staticmethod
     def crear_tabla_rooms(archivo_entrada, archivo_salida, variable, datos, estilos):
+        print(datos)
         try:
             doc = Document(archivo_entrada)
 
