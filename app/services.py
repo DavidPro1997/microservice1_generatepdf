@@ -396,7 +396,7 @@ class GenerarPdf:
     @staticmethod
     def traducir_palabras(palabra):
         if palabra == "room_name":
-            return "Nombre habitaciones:"
+            return "Nombre habitación:"
         elif palabra == "acomodation":
             return "Acomodación:"
         elif palabra == "name_pax":
@@ -410,7 +410,7 @@ class GenerarPdf:
         elif palabra == "board_basis":
             return "Descripción:"
         elif palabra == "room_number":
-            return "Número habitación:"
+            return "Número habitaciones:"
         else:
             return palabra
 
