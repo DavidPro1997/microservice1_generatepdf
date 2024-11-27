@@ -355,6 +355,7 @@ class GenerarPdf:
                                 # Establecer el color de fondo de la celda
                                 shading_elm = parse_xml(r'<w:shd {} w:fill="E7E6E6"/>'.format(nsdecls('w')))
                                 tc_pr.append(shading_elm)
+                        comentarios = []
                         pares = list(diccionario.items())
                         for row_idx, row in enumerate(table.rows):
                             for col_idx, cell in enumerate(row.cells):
@@ -362,29 +363,38 @@ class GenerarPdf:
                                 index = row_idx * 2 + col_idx // 2
                                 if index < len(pares):
                                     clave, valor = pares[index]
-                                    if col_idx % 2 == 0:
-                                        cell.text = GenerarPdf.traducir_palabras(clave)  # Clave en columna izquierda
-                                        # Aplicar negrita en la columna de claves
+                                    if clave == "rate_comments":
+                                        comentarios.append(str(valor))
+                                    else:
+                                        if col_idx % 2 == 0:
+                                            cell.text = GenerarPdf.traducir_palabras(clave)  # Clave en columna izquierda
+                                            # Aplicar negrita en la columna de claves
+                                            for paragraph in cell.paragraphs:
+                                                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
+                                                for run in paragraph.runs:
+                                                    run.bold = True
+                                        else:
+                                            cell.text = str(valor)  # Valor en columna derecha
+
+                                        # Aplicar estilos generales
                                         for paragraph in cell.paragraphs:
                                             paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
                                             for run in paragraph.runs:
-                                                run.bold = True
-                                    else:
-                                        cell.text = str(valor)  # Valor en columna derecha
-
-                                    # Aplicar estilos generales
-                                    for paragraph in cell.paragraphs:
-                                        paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT
-                                        for run in paragraph.runs:
-                                            run.font.name = estilos["fuente"]
-                                            run.font.size = Pt(estilos["numero"])
+                                                run.font.name = estilos["fuente"]
+                                                run.font.size = Pt(estilos["numero"])
 
                         # Insertar un párrafo vacío y luego la tabla
                         empty_paragraph = para.insert_paragraph_before()
                         empty_paragraph.text = ""  # Salto de línea entre tablas
                         table_element = table._element
                         empty_paragraph._element.addnext(table_element)  # Agregar la tabla después del párrafo vacío
-
+                        if comentarios:
+                            comentario_paragraph = empty_paragraph.insert_paragraph_before()
+                            comentario_paragraph.text = "Comentarios: " + "; ".join(comentarios)
+                            for run in comentario_paragraph.runs:
+                                run.font.name = estilos["fuente"]
+                                run.font.size = Pt(estilos["numero"])
+                            table_element.addnext(comentario_paragraph._element)
             doc.save(archivo_salida)
             return True
         except Exception as e:
@@ -398,7 +408,7 @@ class GenerarPdf:
         if palabra == "room_name":
             return "Nombre habitación:"
         elif palabra == "acomodation":
-            return "Acomodación:"
+            return "Tipo:"
         elif palabra == "name_pax":
             return "Pasajero:"
         elif palabra == "adults":
@@ -408,9 +418,13 @@ class GenerarPdf:
         elif palabra == "age_children":
             return "Edad niños:"
         elif palabra == "board_basis":
-            return "Descripción:"
+            return "Régimen:"
         elif palabra == "room_number":
             return "Número habitaciones:"
+        elif palabra == "rate_comments":
+            return "Comentario de tarifa:"
+        elif palabra == "Forma de pago":
+            return "Comentario de tarifa:"
         else:
             return palabra
 
