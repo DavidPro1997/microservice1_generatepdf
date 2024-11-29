@@ -408,7 +408,7 @@ class GenerarPdf:
         if palabra == "room_name":
             return "Nombre habitación:"
         elif palabra == "acomodation":
-            return "Tipo:"
+            return "Acomodation Type:"
         elif palabra == "name_pax":
             return "Pasajero:"
         elif palabra == "adults":
@@ -418,7 +418,7 @@ class GenerarPdf:
         elif palabra == "age_children":
             return "Edad niños:"
         elif palabra == "board_basis":
-            return "Régimen:"
+            return "Board Base:"
         elif palabra == "room_number":
             return "Número habitaciones:"
         elif palabra == "rate_comments":
