@@ -40,6 +40,9 @@ class Switch:
         elif data["tipo"] == "voucher_hotel":
             logging.info("Realizando servicio de creacion de voucher")
             return Hotel.generar_voucher(data)
+        elif data["tipo"] == "cotizador_general":
+            logging.info("Realizando servicio de creacion de cotizacion completa")
+            return Hotel.generar_voucher(data)
         else:
             return {"estado": False, "mensaje": "No se reconoce el tipo de archivo"}
 
@@ -78,7 +81,15 @@ class Switch:
         else:
            return {"estado": False, "mensaje": "No se envio ningun archivo"} 
 
+
 class Cotizador:
+    @staticmethod
+    def cotizar_completo(data):
+        if data["vuelo"]:
+            return Cotizador.cotizar_vuelos(data["vuelo"])
+        return {"estado": False, "mensaje": "No hay vuelo"}    
+
+
     @staticmethod
     def cotizar_vuelos(data):
         if data:
