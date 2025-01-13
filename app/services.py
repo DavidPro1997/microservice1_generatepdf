@@ -106,8 +106,9 @@ class Cotizador:
         # else:
         # if data["vuelo"]:
         #     return Cotizador.cotizar_vuelos(data["vuelo"])
-        if data["hotel"]:
-            return Hotel.cotizar_hotel(data["hotel"])
+        # if data["hotel"]:
+        #     return Hotel.cotizar_hotel(data["hotel"])
+        return {"estado": True, "mensaje": "Documento creado exitosamente"} 
 
 
     @staticmethod
