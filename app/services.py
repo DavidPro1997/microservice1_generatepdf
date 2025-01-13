@@ -48,7 +48,7 @@ class Switch:
             return Hotel.generar_voucher(data)
         elif data["tipo"] == "cotizador_general":
             logging.info("Realizando servicio de creacion de cotizacion completa")
-            return Hotel.generar_voucher(data)
+            return Cotizador.cotizar_completo(data)
         else:
             return {"estado": False, "mensaje": "No se reconoce el tipo de archivo"}
 
