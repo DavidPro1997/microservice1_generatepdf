@@ -927,39 +927,40 @@ class Hotel:
     @staticmethod
     def cotizar_hotel(data):
         if data:
+            docs_eliminar = []
             rooms = data["rooms"]
             data.pop("rooms")
             ruta_plantilla_voucher = os.path.abspath("plantilla/plantilla_cotizar_hoteles.docx")
             ruta_docx_generado_tabla = os.path.abspath("plantilla/voucher_tabla.docx")
+            docs_eliminar.append(ruta_docx_generado_tabla)
             estilos = {"fuente": "Helvetica", "numero":10}
             log_tabla_rooms = GenerarPdf.crear_tabla_rooms(ruta_plantilla_voucher,ruta_docx_generado_tabla,"[rooms]", rooms, estilos)
             if log_tabla_rooms:
                 ruta_docx_generado_voucher = os.path.abspath("plantilla/voucher.docx")
+                docs_eliminar.append(ruta_docx_generado_voucher)
                 log_reemplazar_cotitazion = GenerarPdf.reemplazar_texto_docx(ruta_docx_generado_tabla, ruta_docx_generado_voucher, data, estilos)
                 if log_reemplazar_cotitazion:
-                    ruta_imagen_descargada = os.path.abspath("plantilla/imagen_hotel.jpg")
-                    log_imagen = GenerarPdf.download_image(data["imagen"], ruta_imagen_descargada)
-                    log_imagen2 = GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_voucher, "[imagen_hotel]")
-                    if log_imagen and log_imagen2:
-                        ruta_directorio_pdf = os.path.abspath("plantilla")
-                        ruta_pdf_cotizacion_vuelos = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_voucher, ruta_directorio_pdf)
-                        if ruta_pdf_cotizacion_vuelos:
-                            docs_eliminar = [ruta_docx_generado_voucher,ruta_docx_generado_tabla, ruta_imagen_descargada]
-                            log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
-                            if log_eliminar_data:
-                                pdf_base64 = GenerarPdf.archivo_a_base64(ruta_pdf_cotizacion_vuelos)
-                                if pdf_base64:
-                                    return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64, "ruta": ruta_pdf_cotizacion_vuelos}    
-                                else:
-                                    return {"estado": False, "mensaje": "No se logro crear base64"}    
+                    if data["imagen"]:
+                        ruta_imagen_descargada = os.path.abspath("plantilla/imagen_hotel.jpg")
+                        log_imagen = GenerarPdf.download_image(data["imagen"], ruta_imagen_descargada)
+                        log_imagen2 = GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_voucher, "[imagen_hotel]")
+                        docs_eliminar.append(ruta_imagen_descargada)
+                    ruta_directorio_pdf = os.path.abspath("plantilla")
+                    ruta_pdf_cotizacion_vuelos = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_voucher, ruta_directorio_pdf)
+                    if ruta_pdf_cotizacion_vuelos:
+                        log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
+                        if log_eliminar_data:
+                            pdf_base64 = GenerarPdf.archivo_a_base64(ruta_pdf_cotizacion_vuelos)
+                            if pdf_base64:
+                                return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64, "ruta": ruta_pdf_cotizacion_vuelos}    
                             else:
-                                return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}
+                                return {"estado": False, "mensaje": "No se logro crear base64"}    
                         else:
-                            return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"} 
+                            return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}
                     else:
-                        return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"}  
+                        return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"} 
                 else:
-                    return {"estado": False, "mensaje": "Hubo un error con las imagenes"}
+                    return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"}  
             else:
                 return {"estado": False, "mensaje": "No se logro armar la tabla"} 
         else:
