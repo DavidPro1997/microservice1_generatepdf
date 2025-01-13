@@ -1,4 +1,4 @@
-import os
+import os, requests, traceback
 from docx import Document # type: ignore
 from docx.shared import Pt # type: ignore
 from docx.shared import Cm # type: ignore
@@ -91,11 +91,23 @@ class Switch:
 class Cotizador:
     @staticmethod
     def cotizar_completo(data):
-        # if data["vuelo"]:
-        #     return Cotizador.cotizar_vuelos(data["vuelo"])
-        if data["hotel"]:
-            return Hotel.cotizar_hotel(data["hotel"])
-        return {"estado": False, "mensaje": "No hay hotel"}    
+        if data["vuelo"] and data["hotel"]:
+            log_vuelos = Cotizador.cotizar_vuelos(data["vuelo"])
+            log_hoteles = Hotel.cotizar_hotel(data["hotel"])
+            if(log_vuelos["estado"] and log_hoteles["estado"]):
+                pdfs_unir = [log_vuelos["ruta"], log_hoteles["ruta"]]
+                ruta_pdf = os.path.abspath("plantilla/cotizacion_completa.pdf")
+                log_unir = GenerarPdf.unir_pdfs(pdfs_unir, ruta_pdf)
+                if log_unir:
+                    pdf_base64 = GenerarPdf.archivo_a_base64(ruta_pdf)
+                    if pdf_base64:
+                        return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64} 
+            return {"estado": False, "mensaje": "Ocurrio un error al generar pdf"}
+        else:
+            if data["vuelo"]:
+                return Cotizador.cotizar_vuelos(data["vuelo"])
+            if data["hotel"]:
+                return Hotel.cotizar_hotel(data["hotel"])
 
 
     @staticmethod
@@ -122,7 +134,7 @@ class Cotizador:
                     if log_eliminar_data:
                         pdf_base64 = GenerarPdf.archivo_a_base64(ruta_pdf_cotizacion_vuelos)
                         if pdf_base64:
-                            return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64}    
+                            return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64, "ruta": ruta_pdf_cotizacion_vuelos}    
                         else:
                             return {"estado": False, "mensaje": "No se logro crear base64"}    
                     else:
@@ -345,7 +357,6 @@ class GenerarPdf:
             print(f"Error: {e}")  # Imprime el error si ocurre
             return False  # En caso de error, devolver False
         
-
     @staticmethod
     def crear_tabla_rooms(archivo_entrada, archivo_salida, variable, datos, estilos):
         try:
@@ -421,6 +432,44 @@ class GenerarPdf:
             print(f"Error: {e}")  # Imprime el error si ocurre
             return False  # En caso de error, devolver False
 
+    @staticmethod
+    def imagen_en_docx(image_path, docx_path, key):
+        try:
+            # Cargar el documento DOCX
+            doc = Document(docx_path)
+            
+            # Abrir la imagen en formato JPG
+            image = Image.open(image_path)
+            
+            # Guardar la imagen en un buffer de memoria
+            image_stream = BytesIO()
+            image.save(image_stream, format="JPEG")  # Guardar como JPEG
+            image_stream.seek(0)
+            
+            # Buscar la clave en las celdas de la tabla
+            for table in doc.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        if key in cell.text:
+                            # Eliminar todos los párrafos en la celda
+                            for paragraph in cell.paragraphs:
+                                paragraph.clear()  # Limpiar el contenido del párrafo
+                            
+                            # Insertar la imagen en la celda que contiene la clave
+                            run = cell.paragraphs[0].add_run()
+                            
+                            # Agregar la imagen en la celda
+                            run.add_picture(image_stream)
+                            break
+
+            # Guardar el documento actualizado
+            doc.save(docx_path)
+            return True
+        
+        except Exception as e:
+            print(f"Error: {e}")
+            traceback.print_exc()  # Imprime la traza del error
+            return False
 
     @staticmethod
     def traducir_palabras(palabra):
@@ -486,8 +535,7 @@ class GenerarPdf:
             print(f"Error: {e}")  # Imprime el error si ocurre
             return False  # En caso de error, devolver False
 
-
-        
+ 
     @staticmethod
     def aplicar_estilos_especificos(archivo_entrada, archivo_salida):
         textos_objetivo = {
@@ -606,6 +654,41 @@ class GenerarPdf:
             logging.error(f"Error: {e}")
             print(f"Error: {e}")  # Imprime el error si ocurre
             return False  # En caso de error, devolver False
+        
+    def download_image(image_url: str, save_path: str):
+        try:
+            # Realizar la solicitud HTTP para obtener la imagen
+            response = requests.get(image_url)
+            
+            # Verificar que la solicitud fue exitosa
+            response.raise_for_status()
+            
+            # Abrir la imagen desde los datos descargados
+            image = Image.open(BytesIO(response.content))
+            
+            # Convertir 5 cm a píxeles (1 cm = 37.7952755906 píxeles)
+            cm_to_pixels = 37.7952755906  # Conversión de cm a píxeles
+            width_in_cm = 4
+            height_in_cm = 3
+            width_in_pixels = int(width_in_cm * cm_to_pixels)  # Convertir 5 cm a píxeles
+            height_in_pixels = int(height_in_cm * cm_to_pixels)  # Convertir 5 cm a píxeles
+            
+            # Redimensionar la imagen a 5 cm x 5 cm (en píxeles)
+            image = image.resize((width_in_pixels, height_in_pixels))
+            
+            # Guardar la imagen redimensionada en la ruta especificada
+            image.save(save_path)
+            
+            return True
+        
+        except requests.exceptions.RequestException as e:
+            # Manejar errores de la solicitud HTTP
+            print(f"Error al descargar la imagen: {e}")
+            return False
+        except Exception as e:
+            # Manejar otros posibles errores
+            print(f"Error: {e}")
+            return False
         
 class Descarga:
     @staticmethod
@@ -854,23 +937,29 @@ class Hotel:
                 ruta_docx_generado_voucher = os.path.abspath("plantilla/voucher.docx")
                 log_reemplazar_cotitazion = GenerarPdf.reemplazar_texto_docx(ruta_docx_generado_tabla, ruta_docx_generado_voucher, data, estilos)
                 if log_reemplazar_cotitazion:
-                    ruta_directorio_pdf = os.path.abspath("plantilla")
-                    ruta_pdf_cotizacion_vuelos = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_voucher, ruta_directorio_pdf)
-                    if ruta_pdf_cotizacion_vuelos:
-                        docs_eliminar = [ruta_docx_generado_voucher,ruta_docx_generado_tabla]
-                        log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
-                        if log_eliminar_data:
-                            pdf_base64 = GenerarPdf.archivo_a_base64(ruta_pdf_cotizacion_vuelos)
-                            if pdf_base64:
-                                return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64}    
+                    ruta_imagen_descargada = os.path.abspath("plantilla/imagen_hotel.jpg")
+                    log_imagen = GenerarPdf.download_image(data["imagen"], ruta_imagen_descargada)
+                    log_imagen2 = GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_voucher, "[imagen_hotel]")
+                    if log_imagen and log_imagen2:
+                        ruta_directorio_pdf = os.path.abspath("plantilla")
+                        ruta_pdf_cotizacion_vuelos = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_voucher, ruta_directorio_pdf)
+                        if ruta_pdf_cotizacion_vuelos:
+                            docs_eliminar = [ruta_docx_generado_voucher,ruta_docx_generado_tabla, ruta_imagen_descargada]
+                            log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
+                            if log_eliminar_data:
+                                pdf_base64 = GenerarPdf.archivo_a_base64(ruta_pdf_cotizacion_vuelos)
+                                if pdf_base64:
+                                    return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64, "ruta": ruta_pdf_cotizacion_vuelos}    
+                                else:
+                                    return {"estado": False, "mensaje": "No se logro crear base64"}    
                             else:
-                                return {"estado": False, "mensaje": "No se logro crear base64"}    
+                                return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}
                         else:
-                            return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}
+                            return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"} 
                     else:
-                        return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"}   
+                        return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"}  
                 else:
-                    return {"estado": False, "mensaje": "No se ha posido reemplazar los datos en la plantilla"}
+                    return {"estado": False, "mensaje": "Hubo un error con las imagenes"}
             else:
                 return {"estado": False, "mensaje": "No se logro armar la tabla"} 
         else:
