@@ -14,6 +14,7 @@ from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont # type: ignore
 from docx.oxml.ns import nsdecls # type: ignore
 from docx.oxml import parse_xml # type: ignore
+from app import app
 
 logging.basicConfig(
     filename = os.path.abspath("logs/output.log"), 
@@ -21,6 +22,11 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
+# Manejador global de errores en Flask
+@app.errorhandler(Exception)
+def handle_exception(e):
+    app.logger.error("Se produjo un error: %s", e, exc_info=True)
+    return "Ocurrió un error en el servidor.", 500
 
 class Switch:
     @staticmethod
