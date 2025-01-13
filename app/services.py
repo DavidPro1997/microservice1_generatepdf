@@ -104,10 +104,10 @@ class Cotizador:
         #                 return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64} 
         #     return {"estado": False, "mensaje": "Ocurrio un error al generar pdf"}
         # else:
-        if data["vuelo"]:
-            return Cotizador.cotizar_vuelos(data["vuelo"])
-            # if data["hotel"]:
-            #     return Hotel.cotizar_hotel(data["hotel"])
+        # if data["vuelo"]:
+        #     return Cotizador.cotizar_vuelos(data["vuelo"])
+        if data["hotel"]:
+            return Hotel.cotizar_hotel(data["hotel"])
 
 
     @staticmethod
