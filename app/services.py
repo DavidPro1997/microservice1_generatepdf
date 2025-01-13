@@ -91,23 +91,23 @@ class Switch:
 class Cotizador:
     @staticmethod
     def cotizar_completo(data):
-        if data["vuelo"] and data["hotel"]:
-            log_vuelos = Cotizador.cotizar_vuelos(data["vuelo"])
-            log_hoteles = Hotel.cotizar_hotel(data["hotel"])
-            if(log_vuelos["estado"] and log_hoteles["estado"]):
-                pdfs_unir = [log_vuelos["ruta"], log_hoteles["ruta"]]
-                ruta_pdf = os.path.abspath("plantilla/cotizacion_completa.pdf")
-                log_unir = GenerarPdf.unir_pdfs(pdfs_unir, ruta_pdf)
-                if log_unir:
-                    pdf_base64 = GenerarPdf.archivo_a_base64(ruta_pdf)
-                    if pdf_base64:
-                        return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64} 
-            return {"estado": False, "mensaje": "Ocurrio un error al generar pdf"}
-        else:
-            if data["vuelo"]:
-                return Cotizador.cotizar_vuelos(data["vuelo"])
-            if data["hotel"]:
-                return Hotel.cotizar_hotel(data["hotel"])
+        # if data["vuelo"] and data["hotel"]:
+        #     log_vuelos = Cotizador.cotizar_vuelos(data["vuelo"])
+        #     log_hoteles = Hotel.cotizar_hotel(data["hotel"])
+        #     if(log_vuelos["estado"] and log_hoteles["estado"]):
+        #         pdfs_unir = [log_vuelos["ruta"], log_hoteles["ruta"]]
+        #         ruta_pdf = os.path.abspath("plantilla/cotizacion_completa.pdf")
+        #         log_unir = GenerarPdf.unir_pdfs(pdfs_unir, ruta_pdf)
+        #         if log_unir:
+        #             pdf_base64 = GenerarPdf.archivo_a_base64(ruta_pdf)
+        #             if pdf_base64:
+        #                 return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64} 
+        #     return {"estado": False, "mensaje": "Ocurrio un error al generar pdf"}
+        # else:
+        if data["vuelo"]:
+            return Cotizador.cotizar_vuelos(data["vuelo"])
+            # if data["hotel"]:
+            #     return Hotel.cotizar_hotel(data["hotel"])
 
 
     @staticmethod
