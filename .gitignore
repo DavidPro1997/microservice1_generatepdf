@@ -4,6 +4,7 @@ plantilla/cotizacion_vuelos.pdf
 plantilla/voucher.pdf
 plantilla/vuelos.jpg
 plantilla/recibo*
+plantilla/*.pdf
 venv/
 logs/
 app/__pycache__/*.pyc

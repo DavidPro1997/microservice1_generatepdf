@@ -91,9 +91,11 @@ class Switch:
 class Cotizador:
     @staticmethod
     def cotizar_completo(data):
-        if data["vuelo"]:
-            return Cotizador.cotizar_vuelos(data["vuelo"])
-        return {"estado": False, "mensaje": "No hay vuelo"}    
+        # if data["vuelo"]:
+        #     return Cotizador.cotizar_vuelos(data["vuelo"])
+        if data["hotel"]:
+            return Hotel.cotizar_hotel(data["hotel"])
+        return {"estado": False, "mensaje": "No hay hotel"}    
 
 
     @staticmethod
@@ -837,3 +839,40 @@ class Hotel:
                 return {"estado": False, "mensaje": "No se logro armar la tabla"} 
         else:
             return {"estado": False, "mensaje": "No hay datos en el body"}
+        
+
+    @staticmethod
+    def cotizar_hotel(data):
+        if data:
+            rooms = data["rooms"]
+            data.pop("rooms")
+            ruta_plantilla_voucher = os.path.abspath("plantilla/plantilla_cotizar_hoteles.docx")
+            ruta_docx_generado_tabla = os.path.abspath("plantilla/voucher_tabla.docx")
+            estilos = {"fuente": "Helvetica", "numero":10}
+            log_tabla_rooms = GenerarPdf.crear_tabla_rooms(ruta_plantilla_voucher,ruta_docx_generado_tabla,"[rooms]", rooms, estilos)
+            if log_tabla_rooms:
+                ruta_docx_generado_voucher = os.path.abspath("plantilla/voucher.docx")
+                log_reemplazar_cotitazion = GenerarPdf.reemplazar_texto_docx(ruta_docx_generado_tabla, ruta_docx_generado_voucher, data, estilos)
+                if log_reemplazar_cotitazion:
+                    ruta_directorio_pdf = os.path.abspath("plantilla")
+                    ruta_pdf_cotizacion_vuelos = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_voucher, ruta_directorio_pdf)
+                    if ruta_pdf_cotizacion_vuelos:
+                        docs_eliminar = [ruta_docx_generado_voucher,ruta_docx_generado_tabla]
+                        log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
+                        if log_eliminar_data:
+                            pdf_base64 = GenerarPdf.archivo_a_base64(ruta_pdf_cotizacion_vuelos)
+                            if pdf_base64:
+                                return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64}    
+                            else:
+                                return {"estado": False, "mensaje": "No se logro crear base64"}    
+                        else:
+                            return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}
+                    else:
+                        return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"}   
+                else:
+                    return {"estado": False, "mensaje": "No se ha posido reemplazar los datos en la plantilla"}
+            else:
+                return {"estado": False, "mensaje": "No se logro armar la tabla"} 
+        else:
+            return {"estado": False, "mensaje": "No hay datos en el body"}
+        
