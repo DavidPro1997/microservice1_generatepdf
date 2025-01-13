@@ -21,8 +21,8 @@ logging.basicConfig(
     level=logging.DEBUG,  # Define el nivel de los logs (INFO, DEBUG, etc.)
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
-
-# Manejador global de errores en Flask
+app.logger.setLevel(logging.DEBUG)
+# Manejador global de errores
 @app.errorhandler(Exception)
 def handle_exception(e):
     app.logger.error("Se produjo un error: %s", e, exc_info=True)
