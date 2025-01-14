@@ -109,7 +109,6 @@ class Cotizador:
             if data["hotel"]:
                 return Hotel.cotizar_hotel(data["hotel"])
 
-
     @staticmethod
     def cotizar_vuelos(data):
         if data:
@@ -520,6 +519,20 @@ class GenerarPdf:
                                         paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
                                     for run in paragraph.runs:
                                         run.bold = False  # Esto quita la negrita
+
+                        # Verificar si escala tiene valor y agregar fila adicional
+                        escala = datos[i].get("escala", "")
+                        if escala:  # Si escala no está vacío
+                            new_row = table.add_row()  # Agregar una nueva fila
+                            new_row._tr.addnext(row._tr)
+                            merged_cell = new_row.cells[0]  # Seleccionar la primera celda de la fila
+                            merged_cell.merge(new_row.cells[-1])  # Unir todas las columnas en una sola
+                            merged_cell.text = escala  # Colocar el texto de escala
+                            for paragraph in merged_cell.paragraphs:
+                                paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                            for run in paragraph.runs:
+                                run.bold = False
+
                     table_element = table._element
                     para._element.addnext(table_element)
                     for row in table.rows:
