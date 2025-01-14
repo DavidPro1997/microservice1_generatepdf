@@ -497,7 +497,7 @@ class GenerarPdf:
 
     @staticmethod
     def armar_tabla_vuelos(archivo_entrada, archivo_salida, variable,datos ,estilos):
-        columnas = ["clase","detalle_salida","duracion","detalle_destino"]
+        columnas = ["clase", "detalle_salida", "duracion", "detalle_destino"]
         numeroFilas = len(datos)
         try:
             doc = Document(archivo_entrada)
@@ -506,13 +506,15 @@ class GenerarPdf:
                     para.clear()
                     table = doc.add_table(rows=numeroFilas, cols=4)
                     table.style = 'Plain Table 2'
+                    
+                    # Primero agregamos las filas de datos a la tabla
                     for i, row in enumerate(table.rows):
                         for j, cell in enumerate(row.cells):
                             if i < len(datos):  # Validar que exista la fila
                                 clave = columnas[j]  # Obtener la clave correspondiente a la columna
                                 if clave in datos[i]:  # Validar que la clave exista en el diccionario
-                                    valor = datos[i][clave]                                   
-                                    if isinstance(valor, list):  
+                                    valor = datos[i][clave]
+                                    if isinstance(valor, list):
                                         valor = "\n".join(valor)
                                     cell.text = valor
                                     for paragraph in cell.paragraphs:
@@ -520,11 +522,11 @@ class GenerarPdf:
                                     for run in paragraph.runs:
                                         run.bold = False  # Esto quita la negrita
 
-                        # Verificar si escala tiene valor y agregar fila adicional
+                       # Verificar si escala tiene valor y agregar fila adicional
                         escala = datos[i].get("escala", "")
                         if escala:  # Si escala no está vacío
                             new_row = table.add_row()  # Agregar una nueva fila
-                            new_row._tr.addnext(row._tr)
+                            new_row._tr.addnext(row._tr)  # Insertar después de la fila actual
                             merged_cell = new_row.cells[0]  # Seleccionar la primera celda de la fila
                             merged_cell.merge(new_row.cells[-1])  # Unir todas las columnas en una sola
                             merged_cell.text = escala  # Colocar el texto de escala
