@@ -103,21 +103,21 @@ class Cotizador:
                         ciudad = data["vuelo"]["ida_ciudad_destino"].split(",")[0]
                 else:
                     return vuelos
-            # if data["hotel"]:
-            #     hoteles = Hotel.cotizar_hotel(data["hotel"], data["actividades"])
-            #     if hoteles["estado"]:
-            #         ruta_hoteles = hoteles["ruta"]
-            #         docs_eliminar.append(ruta_hoteles)
-            #         ciudad = data["hotel"]["city"]
-            #     else:
-            #         return hoteles
-            if "costos" in data:
-                costos = Costos.generarPdfCostos(data["costos"])
-                if costos["estado"]:
-                    ruta_costos = costos["ruta"]
-                    docs_eliminar.append(ruta_costos)
+            if data["hotel"]:
+                hoteles = Hotel.cotizar_hotel(data["hotel"], data["actividades"])
+                if hoteles["estado"]:
+                    ruta_hoteles = hoteles["ruta"]
+                    docs_eliminar.append(ruta_hoteles)
+                    ciudad = data["hotel"]["city"]
                 else:
-                    return costos
+                    return hoteles
+            # if "costos" in data:
+            #     costos = Costos.generarPdfCostos(data["costos"])
+            #     if costos["estado"]:
+            #         ruta_costos = costos["ruta"]
+            #         docs_eliminar.append(ruta_costos)
+            #     else:
+            #         return costos
             portada = Cotizador.generarPDFPortada(ciudad)
             if portada:
                 ruta_portada = portada["ruta"]
