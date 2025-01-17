@@ -94,23 +94,23 @@ class Cotizador:
     def cotizar_completo(data):
         if data["vuelo"] or data["hotel"]:
             docs_eliminar = []
-            # if data["vuelo"]:
-            #     vuelos = Cotizador.cotizar_vuelos(data["vuelo"])
-            #     if vuelos["estado"]:
-            #         ruta_vuelos = vuelos["ruta"]
-            #         docs_eliminar.append(ruta_vuelos)
-            #         if "ida_ciudad_destino" in data["vuelo"]:
-            #             ciudad = data["vuelo"]["ida_ciudad_destino"].split(",")[0]
-            #     else:
-            #         return vuelos
-            if data["hotel"]:
-                hoteles = Hotel.cotizar_hotel(data["hotel"], data["actividades"])
-                if hoteles["estado"]:
-                    ruta_hoteles = hoteles["ruta"]
-                    docs_eliminar.append(ruta_hoteles)
-                    ciudad = data["hotel"]["city"]
+            if data["vuelo"]:
+                vuelos = Cotizador.cotizar_vuelos(data["vuelo"])
+                if vuelos["estado"]:
+                    ruta_vuelos = vuelos["ruta"]
+                    docs_eliminar.append(ruta_vuelos)
+                    if "ida_ciudad_destino" in data["vuelo"]:
+                        ciudad = data["vuelo"]["ida_ciudad_destino"].split(",")[0]
                 else:
-                    return hoteles
+                    return vuelos
+            # if data["hotel"]:
+            #     hoteles = Hotel.cotizar_hotel(data["hotel"], data["actividades"])
+            #     if hoteles["estado"]:
+            #         ruta_hoteles = hoteles["ruta"]
+            #         docs_eliminar.append(ruta_hoteles)
+            #         ciudad = data["hotel"]["city"]
+            #     else:
+            #         return hoteles
             if "costos" in data:
                 costos = Costos.generarPdfCostos(data["costos"])
                 if costos["estado"]:
