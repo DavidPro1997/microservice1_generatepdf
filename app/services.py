@@ -1217,7 +1217,7 @@ class Costos:
                     "numA": dataCostos["detallado"]["adultos"]["numero"],
                     "numN": dataCostos["detallado"]["ninos"]["numero"],
                     "precioAdulto": round(float(dataCostos["detallado"]["adultos"]["precio"]), 2),
-                    "precioNino": round(float(dataCostos["detallado"]["adultos"]["precio"]), 2),
+                    "precioNino": round(float(dataCostos["detallado"]["ninos"]["precio"]), 2),
                     "cargos": round(float(dataCostos["detallado"]["cargos"]), 2),
                     "total": round(float(dataCostos["detallado"]["total"]), 2)
                 }
