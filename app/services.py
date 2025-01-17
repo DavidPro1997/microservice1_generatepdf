@@ -99,7 +99,8 @@ class Cotizador:
                 if vuelos["estado"]:
                     ruta_vuelos = vuelos["ruta"]
                     docs_eliminar.append(ruta_vuelos)
-                    ciudad = data["vuelo"]["ida_ciudad_destino"].split(",")[0]
+                    if "ida_ciudad_destino" in data["vuelo"]:
+                        ciudad = data["vuelo"]["ida_ciudad_destino"].split(",")[0]
                 else:
                     return vuelos
             if data["hotel"]:
