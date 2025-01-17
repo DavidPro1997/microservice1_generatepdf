@@ -111,33 +111,33 @@ class Cotizador:
                     ciudad = data["hotel"]["city"]
                 else:
                     return hoteles
-            # if "costos" in data:
-            #     costos = Costos.generarPdfCostos(data["costos"])
-            #     if costos["estado"]:
-            #         ruta_costos = costos["ruta"]
-            #         docs_eliminar.append(ruta_costos)
-            #     else:
-            #         return costos
-            portada = Cotizador.generarPDFPortada(ciudad)
-            if portada:
-                ruta_portada = portada["ruta"]
-                docs_eliminar.insert(0, ruta_portada)
-                ruta_pdf = os.path.abspath("plantilla/cotizacion_completo.pdf")
-                log_unir_pdf = GenerarPdf.unir_pdfs(docs_eliminar, ruta_pdf)
-                if log_unir_pdf:
-                    log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
-                    if log_eliminar_data:
-                        pdf_base64 = GenerarPdf.archivo_a_base64(ruta_pdf)
-                        if pdf_base64:
-                            return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64}    
-                        else:
-                            return {"estado": False, "mensaje": "No se logro crear base64"} 
-                    else:
-                        return {"estado": False, "mensaje": "No se logro eliminar los docs"} 
+            if "costos" in data:
+                costos = Costos.generarPdfCostos(data["costos"])
+                if costos["estado"]:
+                    ruta_costos = costos["ruta"]
+                    docs_eliminar.append(ruta_costos)
                 else:
-                    return {"estado": False, "mensaje": "No se logro unir los docs"} 
+                    return costos
+            # portada = Cotizador.generarPDFPortada(ciudad)
+            # if portada:
+            #     ruta_portada = portada["ruta"]
+            #     docs_eliminar.insert(0, ruta_portada)
+            ruta_pdf = os.path.abspath("plantilla/cotizacion_completo.pdf")
+            log_unir_pdf = GenerarPdf.unir_pdfs(docs_eliminar, ruta_pdf)
+            if log_unir_pdf:
+                log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
+                if log_eliminar_data:
+                    pdf_base64 = GenerarPdf.archivo_a_base64(ruta_pdf)
+                    if pdf_base64:
+                        return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64}    
+                    else:
+                        return {"estado": False, "mensaje": "No se logro crear base64"} 
+                else:
+                    return {"estado": False, "mensaje": "No se logro eliminar los docs"} 
             else:
-                return portada
+                return {"estado": False, "mensaje": "No se logro unir los docs"} 
+            # else:
+            #     return portada
         return{"estado": False, "mensaje": "No hay datos de vuelos ni paquetes"}
     
     
