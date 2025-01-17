@@ -1,7 +1,7 @@
 import os, requests, traceback
 from docx import Document # type: ignore
 from docx.shared import Pt # type: ignore
-from docx.shared import Cm # type: ignore
+from docx.shared import Cm, RGBColor # type: ignore
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT # type: ignore
 import subprocess
 import sys, platform
@@ -15,6 +15,7 @@ from PIL import Image, ImageDraw, ImageFont # type: ignore
 from docx.oxml.ns import nsdecls # type: ignore
 from docx.oxml import parse_xml # type: ignore
 from app import app
+from datetime import datetime
 
 logging.basicConfig(
     filename = os.path.abspath("logs/output.log"), 
@@ -91,23 +92,81 @@ class Switch:
 class Cotizador:
     @staticmethod
     def cotizar_completo(data):
-        if data["vuelo"] and data["hotel"]:
-            log_vuelos = Cotizador.cotizar_vuelos(data["vuelo"])
-            log_hoteles = Hotel.cotizar_hotel(data["hotel"])
-            if(log_vuelos["estado"] and log_hoteles["estado"]):
-                pdfs_unir = [log_vuelos["ruta"], log_hoteles["ruta"]]
-                ruta_pdf = os.path.abspath("plantilla/cotizacion_completa.pdf")
-                log_unir = GenerarPdf.unir_pdfs(pdfs_unir, ruta_pdf)
-                if log_unir:
-                    pdf_base64 = GenerarPdf.archivo_a_base64(ruta_pdf)
-                    if pdf_base64:
-                        return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64} 
-            return {"estado": False, "mensaje": "Ocurrio un error al generar pdf"}
-        else:
+        if data["vuelo"] or data["hotel"]:
+            docs_eliminar = []
             if data["vuelo"]:
-                return Cotizador.cotizar_vuelos(data["vuelo"])
+                vuelos = Cotizador.cotizar_vuelos(data["vuelo"])
+                if vuelos["estado"]:
+                    ruta_vuelos = vuelos["ruta"]
+                    docs_eliminar.append(ruta_vuelos)
+                    ciudad = data["vuelo"]["ida_ciudad_destino"].split(",")[0]
+                else:
+                    return vuelos
             if data["hotel"]:
-                return Hotel.cotizar_hotel(data["hotel"])
+                hoteles = Hotel.cotizar_hotel(data["hotel"], data["actividades"])
+                if hoteles["estado"]:
+                    ruta_hoteles = hoteles["ruta"]
+                    docs_eliminar.append(ruta_hoteles)
+                    ciudad = data["hotel"]["city"]
+                else:
+                    return hoteles
+            if "costos" in data:
+                costos = Costos.generarPdfCostos(data["costos"])
+                if costos["estado"]:
+                    ruta_costos = costos["ruta"]
+                    docs_eliminar.append(ruta_costos)
+                else:
+                    return costos
+            portada = Cotizador.generarPDFPortada(ciudad)
+            if portada:
+                ruta_portada = portada["ruta"]
+                docs_eliminar.insert(0, ruta_portada)
+                ruta_pdf = os.path.abspath("plantilla/cotizacion_completo.pdf")
+                log_unir_pdf = GenerarPdf.unir_pdfs(docs_eliminar, ruta_pdf)
+                if log_unir_pdf:
+                    log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
+                    if log_eliminar_data:
+                        pdf_base64 = GenerarPdf.archivo_a_base64(ruta_pdf)
+                        if pdf_base64:
+                            return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64}    
+                        else:
+                            return {"estado": False, "mensaje": "No se logro crear base64"} 
+                    else:
+                        return {"estado": False, "mensaje": "No se logro eliminar los docs"} 
+                else:
+                    return {"estado": False, "mensaje": "No se logro unir los docs"} 
+            else:
+                return portada
+        return{"estado": False, "mensaje": "No hay datos de vuelos ni paquetes"}
+    
+    
+    @staticmethod
+    def generarPDFPortada(ciudad):
+        if ciudad:
+            datos={
+                "city": ciudad.upper()
+            }
+            docs_eliminar = []
+            ruta_plantilla_portada = os.path.abspath("plantilla/plantilla_cotizar_portada.docx")
+            ruta_docx_generado_portada = os.path.abspath(f"plantilla/portada.docx")
+            docs_eliminar.append(ruta_docx_generado_portada)
+            estilos = {"fuente": "Helvetica", "numero":50, "color": "#FFFFFF"}
+            log_reemplazar_cotitazion = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_portada, ruta_docx_generado_portada, datos, estilos, "CENTER")
+            if log_reemplazar_cotitazion:
+                ruta_directorio_pdf = os.path.abspath("plantilla")
+                ruta_pdf_generado = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_portada, ruta_directorio_pdf)
+                if ruta_pdf_generado:
+                    log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
+                    if log_eliminar_data:
+                        return{"estado": True, "mensaje": "Costos creados correctamente", "ruta": ruta_pdf_generado}
+                else:
+                    return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"} 
+            else:
+                return {"estado": False, "mensaje": "No se ha podido reemplazar docx"} 
+        else:
+            return {"estado": False, "mensaje": "No hay datos de ciudad"} 
+
+
 
     @staticmethod
     def cotizar_vuelos(data):
@@ -131,11 +190,7 @@ class Cotizador:
                     docs_eliminar = [ruta_docx_generado_cotizacion_vuelos, ruta_docx_generado_cotizacion_vuelos_ida, ruta_docx_generado_cotizacion_vuelos_vuelta]
                     log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
                     if log_eliminar_data:
-                        pdf_base64 = GenerarPdf.archivo_a_base64(ruta_pdf_cotizacion_vuelos)
-                        if pdf_base64:
-                            return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64, "ruta": ruta_pdf_cotizacion_vuelos}    
-                        else:
-                            return {"estado": False, "mensaje": "No se logro crear base64"}    
+                        return {"estado": True, "mensaje": "Documento creado exitosamente", "ruta": ruta_pdf_cotizacion_vuelos}    
                     else:
                         return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}
                 else:
@@ -321,7 +376,7 @@ class GenerarPdf:
         return True
 
     @staticmethod
-    def reemplazar_texto_docx(archivo_entrada, archivo_salida, variables, estilos):
+    def reemplazar_texto_docx(archivo_entrada, archivo_salida, variables, estilos, alineacion="JUSTIFY"):
         try:
             doc = Document(archivo_entrada)
             for para in doc.paragraphs:
@@ -334,6 +389,18 @@ class GenerarPdf:
                         for run in para.runs:
                             run.font.name = estilos["fuente"]
                             run.font.size = Pt(estilos["numero"])
+                            if "color" in estilos and estilos["color"]:
+                                color_hex = estilos["color"]
+                                if color_hex:  # Si hay un color especificado
+                                    # Convertir el color hexadecimal a RGB
+                                    rgb = RGBColor(int(color_hex[1:3], 16), int(color_hex[3:5], 16), int(color_hex[5:7], 16))
+                                    run.font.color.rgb = rgb
+                        # Justificar el párrafo
+                        if alineacion == "CENTER":
+                            para.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                        else:
+                            para.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
+                        
 
             #Recorrer las tablas del documento
             for tabla in doc.tables:
@@ -349,12 +416,61 @@ class GenerarPdf:
                                     for run in para.runs:
                                         run.font.name = estilos["fuente"]
                                         run.font.size = Pt(estilos["numero"])
+                                        if "color" in estilos and estilos["color"]:
+                                            color_hex = estilos["color"]
+                                            if color_hex:  # Si hay un color especificado
+                                                # Convertir el color hexadecimal a RGB
+                                                rgb = RGBColor(int(color_hex[1:3], 16), int(color_hex[3:5], 16), int(color_hex[5:7], 16))
+                                                run.font.color.rgb = rgb
             doc.save(archivo_salida)
             return True
         except Exception as e:
             logging.error(f"Error: {e}")
             print(f"Error: {e}")  # Imprime el error si ocurre
             return False  # En caso de error, devolver False
+        
+        
+    def reemplazar_clave_array(archivo_entrada, archivo_salida, array, estilos, clave, alineacion="JUSTIFY"):
+        try:
+            doc = Document(archivo_entrada)
+
+            # Construir el texto a insertar a partir del array de strings
+            texto_reemplazo = "\n".join(array)
+
+            def aplicar_reemplazo(parrafo):
+                """Reemplaza el texto y aplica estilo y alineación."""
+                parrafo.text = texto_reemplazo
+                for run in parrafo.runs:
+                    run.font.name = estilos["fuente"]
+                    run.font.size = Pt(estilos["numero"])
+                if alineacion == "CENTER":
+                    parrafo.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+                else:
+                    parrafo.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
+
+            # Reemplazar en párrafos
+            for para in doc.paragraphs:
+                if clave in para.text:
+                    aplicar_reemplazo(para)
+            
+            # Reemplazar en tablas
+            for tabla in doc.tables:
+                for fila in tabla.rows:
+                    for celda in fila.cells:
+                        for para in celda.paragraphs:
+                            if clave in para.text:
+                                aplicar_reemplazo(para)
+            
+            # Guardar el documento actualizado
+            doc.save(archivo_salida)
+            return True
+
+        except Exception as e:
+            logging.error(f"Error: {e}")
+            print(f"Error: {e}")  # Imprime el error si ocurre
+            return False  # En caso de error, devolver False
+    
+
         
     @staticmethod
     def crear_tabla_rooms(archivo_entrada, archivo_salida, variable, datos, estilos):
@@ -432,39 +548,62 @@ class GenerarPdf:
             return False  # En caso de error, devolver False
 
     @staticmethod
-    def imagen_en_docx(image_path, docx_path, key):
+    def imagen_en_docx(image_path, docx_path, key, alto_en_pt):
         try:
             # Cargar el documento DOCX
             doc = Document(docx_path)
-            
-            # Abrir la imagen en formato JPG
+
+            # Abrir la imagen
             image = Image.open(image_path)
-            
+
+            # Calcular el ancho en proporción al alto especificado
+            ancho_original, alto_original = image.size
+            proporción = alto_en_pt / alto_original
+            ancho_en_pt = int(ancho_original * proporción)
+
             # Guardar la imagen en un buffer de memoria
             image_stream = BytesIO()
             image.save(image_stream, format="JPEG")  # Guardar como JPEG
             image_stream.seek(0)
-            
+
+            # Bandera para verificar si se encontró la clave
+            found = False
+
             # Buscar la clave en las celdas de la tabla
             for table in doc.tables:
                 for row in table.rows:
                     for cell in row.cells:
                         if key in cell.text:
-                            # Eliminar todos los párrafos en la celda
+                            found = True
+                            
+                            # Limpiar el contenido de la celda
                             for paragraph in cell.paragraphs:
                                 paragraph.clear()  # Limpiar el contenido del párrafo
-                            
-                            # Insertar la imagen en la celda que contiene la clave
+
+                            # Insertar la imagen en la celda y centrarla
                             run = cell.paragraphs[0].add_run()
-                            
-                            # Agregar la imagen en la celda
-                            run.add_picture(image_stream)
+                            run.add_picture(image_stream, width=Pt(ancho_en_pt), height=Pt(alto_en_pt))
+                            cell.paragraphs[0].alignment = WD_PARAGRAPH_ALIGNMENT.CENTER  # Centrar el párrafo
                             break
+            
+            # Buscar la clave en los párrafos normales si no está en una tabla
+            if not found:
+                for paragraph in doc.paragraphs:
+                    if key in paragraph.text:
+                        # Limpiar el contenido del párrafo
+                        paragraph.clear()  # Limpiar el contenido del párrafo
+
+                        # Crear un nuevo párrafo para la imagen
+                        new_paragraph = paragraph.insert_paragraph_before()
+                        new_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER  # Centrar el párrafo
+                        run = new_paragraph.add_run()
+                        run.add_picture(image_stream, width=Pt(ancho_en_pt), height=Pt(alto_en_pt))
+                        break
 
             # Guardar el documento actualizado
             doc.save(docx_path)
             return True
-        
+
         except Exception as e:
             print(f"Error: {e}")
             traceback.print_exc()  # Imprime la traza del error
@@ -681,17 +820,7 @@ class GenerarPdf:
             # Abrir la imagen desde los datos descargados
             image = Image.open(BytesIO(response.content))
             
-            # Convertir 5 cm a píxeles (1 cm = 37.7952755906 píxeles)
-            cm_to_pixels = 37.7952755906  # Conversión de cm a píxeles
-            width_in_cm = 4
-            height_in_cm = 3
-            width_in_pixels = int(width_in_cm * cm_to_pixels)  # Convertir 5 cm a píxeles
-            height_in_pixels = int(height_in_cm * cm_to_pixels)  # Convertir 5 cm a píxeles
-            
-            # Redimensionar la imagen a 5 cm x 5 cm (en píxeles)
-            image = image.resize((width_in_pixels, height_in_pixels))
-            
-            # Guardar la imagen redimensionada en la ruta especificada
+            # Guardar la imagen en la ruta especificada sin modificar su tamaño
             image.save(save_path)
             
             return True
@@ -938,46 +1067,186 @@ class Hotel:
         else:
             return {"estado": False, "mensaje": "No hay datos en el body"}
         
-
     @staticmethod
-    def cotizar_hotel(data):
-        if data:
+    def cotizar_hotel(dataHotel, dataActividades):
+        if dataHotel:
             docs_eliminar = []
-            rooms = data["rooms"]
-            data.pop("rooms")
-            ruta_plantilla_voucher = os.path.abspath("plantilla/plantilla_cotizar_hoteles.docx")
-            ruta_docx_generado_tabla = os.path.abspath("plantilla/voucher_tabla.docx")
-            docs_eliminar.append(ruta_docx_generado_tabla)
-            estilos = {"fuente": "Helvetica", "numero":10}
-            log_tabla_rooms = GenerarPdf.crear_tabla_rooms(ruta_plantilla_voucher,ruta_docx_generado_tabla,"[rooms]", rooms, estilos)
-            if log_tabla_rooms:
-                ruta_docx_generado_voucher = os.path.abspath("plantilla/voucher.docx")
-                docs_eliminar.append(ruta_docx_generado_voucher)
-                log_reemplazar_cotitazion = GenerarPdf.reemplazar_texto_docx(ruta_docx_generado_tabla, ruta_docx_generado_voucher, data, estilos)
-                if log_reemplazar_cotitazion:
-                    if data["imagen"]:
-                        ruta_imagen_descargada = os.path.abspath("plantilla/imagen_hotel.jpg")
-                        log_imagen = GenerarPdf.download_image(data["imagen"], ruta_imagen_descargada)
-                        log_imagen2 = GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_voucher, "[imagen_hotel]")
-                        docs_eliminar.append(ruta_imagen_descargada)
-                    ruta_directorio_pdf = os.path.abspath("plantilla")
-                    ruta_pdf_cotizacion_vuelos = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_voucher, ruta_directorio_pdf)
-                    if ruta_pdf_cotizacion_vuelos:
-                        log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
-                        if log_eliminar_data:
-                            pdf_base64 = GenerarPdf.archivo_a_base64(ruta_pdf_cotizacion_vuelos)
-                            if pdf_base64:
-                                return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64, "ruta": ruta_pdf_cotizacion_vuelos}    
+            actividades = []
+            pdfs_unir = []
+            if dataActividades:
+                for actividad in dataActividades:
+                    actividades.append(f"• {actividad['actividad']['tours']['nombre']}")
+                log_actividades = Actividad.generarPdfActividades(dataActividades)
+                if log_actividades["estado"]:
+                    ruta_actividades = log_actividades["ruta"]
+                    pdfs_unir.append(ruta_actividades)
+                    docs_eliminar.append(ruta_actividades)
+            ruta_plantilla_paquete = os.path.abspath("plantilla/plantilla_cotizar_paquete.docx")
+            estilos = {"fuente": "Helvetica", "numero":12}
+            ruta_docx_generado_paquete = os.path.abspath("plantilla/paquete.docx")
+            docs_eliminar.append(ruta_docx_generado_paquete)
+            adultos = 0
+            ninos = 0
+            habitacion = []
+            dias = Hotel.calcular_dias_noches(dataHotel["check_in"], dataHotel["check_out"])
+            for room in dataHotel["rooms"]:
+                adultos = adultos + int(room["adults"])
+                ninos = ninos + int(room["children"])
+                detalle_habitacion = (f"{room['room_number']} habitacion(es) {room['acomodation']} {room['room_name']} - {room['board_basis']}")
+                habitacion.append(detalle_habitacion)
+            datos = {
+                "adultos": (f"{adultos} adulto(s)"),
+                "ninos": (f"{ninos} niño(s)"),
+                "city": dataHotel["city"],
+                "dias": (f"{dias['dias']} dias y {dias['noches']} noches")
+            }
+            log_reemplazar_paquete = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_paquete,ruta_docx_generado_paquete, datos, estilos)
+            if log_reemplazar_paquete:
+                ruta_docx_generado_paquete_habitaciones = os.path.abspath("plantilla/paquete_habitaciones.docx")
+                ruta_docx_generado_paquete_actividades = os.path.abspath("plantilla/paquete_actividades.docx")
+                # ruta_docx_generado_paquete_facilities = os.path.abspath("plantilla/paquete_facilities.docx")
+                docs_eliminar.append(ruta_docx_generado_paquete_habitaciones)
+                docs_eliminar.append(ruta_docx_generado_paquete_actividades)
+                # docs_eliminar.append(ruta_docx_generado_paquete_facilities)
+                log_reemplazar_array_habitacion = GenerarPdf.reemplazar_clave_array(ruta_docx_generado_paquete, ruta_docx_generado_paquete_habitaciones, habitacion, estilos, "[habitacion]", alineacion="CENTER")
+                if(log_reemplazar_array_habitacion):
+                    log_reemplazar_array_actividades = GenerarPdf.reemplazar_clave_array(ruta_docx_generado_paquete_habitaciones, ruta_docx_generado_paquete_actividades, actividades, estilos, "[actividades]", alineacion="CENTER")
+                    if(log_reemplazar_array_actividades):
+                        ruta_directorio_pdf = os.path.abspath("plantilla")
+                        ruta_pdf_cotizacion_paquete = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_paquete_actividades, ruta_directorio_pdf)
+                        pdfs_unir.insert(0,ruta_pdf_cotizacion_paquete)
+                        docs_eliminar.append(ruta_pdf_cotizacion_paquete)
+                        if ruta_pdf_cotizacion_paquete:
+                            ruta_pdf = os.path.abspath("plantilla/cotizacion_paquete.pdf")
+                            log_unir = GenerarPdf.unir_pdfs(pdfs_unir, ruta_pdf)
+                            if log_unir:
+                                log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
+                                if log_eliminar_data:
+                                    return {"estado": True, "mensaje": "Documento creado exitosamente", "ruta": ruta_pdf}    
+                                else:
+                                    return {"estado": False, "mensaje": "No se logro crear base64"}    
                             else:
-                                return {"estado": False, "mensaje": "No se logro crear base64"}    
+                                return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}
                         else:
-                            return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}
+                            return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"} 
                     else:
-                        return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"} 
+                        return {"estado": False, "mensaje": "Error al reemplazar array"}
                 else:
-                    return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"}  
+                    return {"estado": False, "mensaje": "Error al reemplazar array"}  
             else:
                 return {"estado": False, "mensaje": "No se logro armar la tabla"} 
         else:
             return {"estado": False, "mensaje": "No hay datos en el body"}
         
+    @staticmethod
+    def calcular_dias_noches(check_in, check_out):
+        # Convertir las fechas de string a objetos datetime
+        formato = "%Y-%m-%d"  # Formato de la fecha (yyyy-mm-dd)
+        fecha_in = datetime.strptime(check_in, formato)
+        fecha_out = datetime.strptime(check_out, formato)
+        
+        # Calcular la diferencia entre las fechas
+        diferencia = fecha_out - fecha_in
+        
+        # Días y noches
+        dias = diferencia.days
+        noches = dias - 1  # Las noches son un día menos que los días de estancia
+        
+        # Devolver un diccionario con los resultados
+        return {
+            "dias": dias,
+            "noches": noches
+        }
+        
+class Actividad:
+    @staticmethod
+    def generarPdfActividades(dataActividades):
+        if dataActividades:
+            pdfs_unir = []
+            docs_eliminar = []
+            aux = True
+            for index, act in enumerate(dataActividades):
+                ruta_plantilla_actividad = os.path.abspath("plantilla/plantilla_cotizar_actividades.docx")
+                ruta_docx_generado_actividad = os.path.abspath(f"plantilla/actividad_{index}.docx")
+                docs_eliminar.append(ruta_docx_generado_actividad)
+                estilos = {"fuente": "Helvetica", "numero":12}
+                log_reemplazar_cotitazion = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_actividad, ruta_docx_generado_actividad, act['actividad']['tours'], estilos)
+                if log_reemplazar_cotitazion:
+                    ruta_imagen_descargada = os.path.abspath(f"plantilla/imagen_actividad_{index}.jpeg")
+                    ruta_imagen = (f"https://cotizador.mvevip.com/img/actividades_internas/{act['actividad']['codigo']}/{act['actividad']['tours']['id']}.jpg")
+                    GenerarPdf.download_image(ruta_imagen, ruta_imagen_descargada)
+                    GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_actividad, "[imagen_actividad]", 200)
+                    docs_eliminar.append(ruta_imagen_descargada)
+                    ruta_directorio_pdf = os.path.abspath("plantilla")
+                    ruta_pdf_generado = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_actividad, ruta_directorio_pdf)
+                    if ruta_pdf_generado:
+                        pdfs_unir.append(ruta_pdf_generado)
+                        docs_eliminar.append(ruta_pdf_generado)
+                        aux = True
+                    else:
+                        aux = False 
+                else:
+                    aux = False 
+        if aux is True:
+            ruta_pdf = os.path.abspath("plantilla/actividades.pdf")
+            log_unir = GenerarPdf.unir_pdfs(pdfs_unir, ruta_pdf)
+            if log_unir:
+                log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
+                if log_eliminar_data:
+                    pdf_base64 = GenerarPdf.archivo_a_base64(ruta_pdf)
+                    if pdf_base64:
+                        return {"estado": True, "mensaje": "Actividades creadas correctamente", "ruta": ruta_pdf}  
+                    else:
+                        return {"estado": False, "mensaje": "No se logro crear base64"}    
+                else:
+                    return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}
+            else:
+                return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"} 
+        else:
+            return {"estado": False, "mensaje": "Hubo un error con las actividades"} 
+        
+
+class Costos:
+    @staticmethod
+    def generarPdfCostos(dataCostos):
+        if dataCostos:
+            docs_eliminar = []
+            if dataCostos["tipo"] == "0":
+                ruta_plantilla_actividad = os.path.abspath("plantilla/plantilla_cotizar_costos_detallado.docx")
+                datos = {
+                    "numA": dataCostos["detallado"]["adultos"]["numero"],
+                    "numN": dataCostos["detallado"]["ninos"]["numero"],
+                    "precioAdulto": round(float(dataCostos["detallado"]["adultos"]["precio"]), 2),
+                    "precioNino": round(float(dataCostos["detallado"]["adultos"]["precio"]), 2),
+                    "cargos": round(float(dataCostos["detallado"]["cargos"]), 2),
+                    "total": round(float(dataCostos["detallado"]["total"]), 2)
+                }
+            elif dataCostos["tipo"] == "1":
+                ruta_plantilla_actividad = os.path.abspath("plantilla/plantilla_cotizar_costos_no_detallado.docx")
+                datos = {
+                    "paquete": dataCostos["noDetallado"]["paquete"],
+                    "vuelo": dataCostos["noDetallado"]["vuelo"],
+                    "total": round(float(dataCostos["noDetallado"]["paquete"]) + float(dataCostos["noDetallado"]["vuelo"]), 2)
+                }
+            else:
+                return {"estado": False, "mensaje": "No se logro identificar el tipo de costos"}
+            
+            ruta_docx_generado_costos = os.path.abspath(f"plantilla/costos.docx")
+            docs_eliminar.append(ruta_docx_generado_costos)
+            estilos = {"fuente": "Helvetica", "numero":12}
+            log_reemplazar_cotitazion = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_actividad, ruta_docx_generado_costos, datos, estilos)
+            if log_reemplazar_cotitazion:
+                ruta_directorio_pdf = os.path.abspath("plantilla")
+                ruta_pdf_generado = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_costos, ruta_directorio_pdf)
+                if ruta_pdf_generado:
+                    log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
+                    if log_eliminar_data:
+                        return{"estado": True, "mensaje": "Costos creados correctamente", "ruta": ruta_pdf_generado}
+                else:
+                    return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"} 
+            else:
+                return {"estado": False, "mensaje": "No se ha podido reemplazar docx"} 
+        else:
+            return {"estado": False, "mensaje": "No hay datos de costos"} 
+
+                
