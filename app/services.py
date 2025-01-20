@@ -549,7 +549,7 @@ class GenerarPdf:
             return False  # En caso de error, devolver False
 
     @staticmethod
-    def imagen_en_docx(image_path, docx_path, key, alto_en_pt):
+    def imagen_en_docx(image_path, docx_path, key, ancho_en_pt):
         try:
             # Cargar el documento DOCX
             doc = Document(docx_path)
@@ -559,8 +559,12 @@ class GenerarPdf:
 
             # Calcular el ancho en proporción al alto especificado
             ancho_original, alto_original = image.size
-            proporción = alto_en_pt / alto_original
-            ancho_en_pt = int(ancho_original * proporción)
+            proporción = ancho_en_pt / ancho_original
+            alto_en_pt = int(alto_original * proporción)
+            # Calcular el ancho en proporción al alto especificado
+            # ancho_original, alto_original = image.size
+            # proporción = alto_en_pt / alto_original
+            # ancho_en_pt = int(ancho_original * proporción)
 
             # Guardar la imagen en un buffer de memoria
             image_stream = BytesIO()
@@ -1082,6 +1086,34 @@ class Hotel:
                     ruta_actividades = log_actividades["ruta"]
                     pdfs_unir.append(ruta_actividades)
                     docs_eliminar.append(ruta_actividades)
+            log_hotel = Hotel.generar_pdf_hotel(dataHotel)
+            if log_hotel["estado"]:
+                ruta_hotel = log_hotel["ruta"]
+                pdfs_unir.insert(0, ruta_hotel)
+                docs_eliminar.append(ruta_hotel)
+            log_paquete = Hotel.generar_pdf_paquete(dataHotel, actividades)
+            if log_paquete["estado"]:
+                ruta_paquete = log_paquete["ruta"]
+                pdfs_unir.insert(0, ruta_paquete)
+                docs_eliminar.append(ruta_paquete)
+            ruta_pdf = os.path.abspath("plantilla/cotizacion_hoteles.pdf")
+            log_unir = GenerarPdf.unir_pdfs(pdfs_unir, ruta_pdf)
+            if log_unir:
+                log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
+                if log_eliminar_data:
+                    return {"estado": True, "mensaje": "Documento creado exitosamente", "ruta": ruta_pdf}    
+                else:
+                    return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}    
+            else:
+                return {"estado": False, "mensaje": "No se logro unir los documentos"}
+        else:
+            return {"estado": False, "mensaje": "No hay datos en el body"}
+        
+    
+    @staticmethod
+    def generar_pdf_paquete(dataHotel, actividades):
+        if dataHotel:
+            docs_eliminar = []
             ruta_plantilla_paquete = os.path.abspath("plantilla/plantilla_cotizar_paquete.docx")
             estilos = {"fuente": "Helvetica", "numero":12}
             ruta_docx_generado_paquete = os.path.abspath("plantilla/paquete.docx")
@@ -1099,35 +1131,28 @@ class Hotel:
                 "adultos": (f"{adultos} adulto(s)"),
                 "ninos": (f"{ninos} niño(s)"),
                 "city": dataHotel["city"],
-                "dias": (f"{dias['dias']} dias y {dias['noches']} noches")
+                "dias": (f"{dias['dias']} dias y {dias['noches']} noches"),
+                "check_in": dataHotel["check_in"],
+                "check_out": dataHotel["check_out"]
             }
             log_reemplazar_paquete = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_paquete,ruta_docx_generado_paquete, datos, estilos)
             if log_reemplazar_paquete:
                 ruta_docx_generado_paquete_habitaciones = os.path.abspath("plantilla/paquete_habitaciones.docx")
                 ruta_docx_generado_paquete_actividades = os.path.abspath("plantilla/paquete_actividades.docx")
-                # ruta_docx_generado_paquete_facilities = os.path.abspath("plantilla/paquete_facilities.docx")
                 docs_eliminar.append(ruta_docx_generado_paquete_habitaciones)
                 docs_eliminar.append(ruta_docx_generado_paquete_actividades)
-                # docs_eliminar.append(ruta_docx_generado_paquete_facilities)
                 log_reemplazar_array_habitacion = GenerarPdf.reemplazar_clave_array(ruta_docx_generado_paquete, ruta_docx_generado_paquete_habitaciones, habitacion, estilos, "[habitacion]", alineacion="CENTER")
                 if(log_reemplazar_array_habitacion):
                     log_reemplazar_array_actividades = GenerarPdf.reemplazar_clave_array(ruta_docx_generado_paquete_habitaciones, ruta_docx_generado_paquete_actividades, actividades, estilos, "[actividades]", alineacion="CENTER")
                     if(log_reemplazar_array_actividades):
                         ruta_directorio_pdf = os.path.abspath("plantilla")
                         ruta_pdf_cotizacion_paquete = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_paquete_actividades, ruta_directorio_pdf)
-                        pdfs_unir.insert(0,ruta_pdf_cotizacion_paquete)
-                        docs_eliminar.append(ruta_pdf_cotizacion_paquete)
                         if ruta_pdf_cotizacion_paquete:
-                            ruta_pdf = os.path.abspath("plantilla/cotizacion_paquete.pdf")
-                            log_unir = GenerarPdf.unir_pdfs(pdfs_unir, ruta_pdf)
-                            if log_unir:
-                                log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
-                                if log_eliminar_data:
-                                    return {"estado": True, "mensaje": "Documento creado exitosamente", "ruta": ruta_pdf}    
-                                else:
-                                    return {"estado": False, "mensaje": "No se logro crear base64"}    
+                            log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
+                            if log_eliminar_data:
+                                return {"estado": True, "mensaje": "Documento creado exitosamente", "ruta": ruta_pdf_cotizacion_paquete}    
                             else:
-                                return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}
+                                return {"estado": False, "mensaje": "No se logro crear base64"}    
                         else:
                             return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"} 
                     else:
@@ -1138,6 +1163,50 @@ class Hotel:
                 return {"estado": False, "mensaje": "No se logro armar la tabla"} 
         else:
             return {"estado": False, "mensaje": "No hay datos en el body"}
+        
+
+    @staticmethod
+    def generar_pdf_hotel(dataHotel):
+        if dataHotel:
+            docs_eliminar = []
+            ruta_plantilla_hotel = os.path.abspath("plantilla/plantilla_cotizar_hoteles.docx")
+            estilos = {"fuente": "Helvetica", "numero":12}
+            ruta_docx_generado_hotel = os.path.abspath("plantilla/hoteles.docx")
+            docs_eliminar.append(ruta_docx_generado_hotel)
+            facilidades = ", ".join(dataHotel["facilities"]) + "."
+            datos = {
+                "nombre_hotel": dataHotel["hotel_name"],
+                "descripcion": dataHotel["descripcion"],
+                "facilities": facilidades
+            }
+            log_reemplazar_paquete = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_hotel,ruta_docx_generado_hotel, datos, estilos)
+            if log_reemplazar_paquete:
+                ruta_imagen_descargada = os.path.abspath(f"plantilla/imagen_hotel.jpeg")
+                docs_eliminar.append(ruta_imagen_descargada)
+                ruta_imagen = dataHotel["imagen"]
+                log_descargar_imagen = GenerarPdf.download_image(ruta_imagen, ruta_imagen_descargada)
+                if log_descargar_imagen:
+                    log_imagen_docx = GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_hotel, "[imagen_hotel]", 400)
+                    if log_imagen_docx:
+                        ruta_directorio_pdf = os.path.abspath("plantilla")
+                        ruta_pdf_cotizacion_hotel = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_hotel, ruta_directorio_pdf)
+                        if ruta_pdf_cotizacion_hotel:
+                            log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
+                            if log_eliminar_data:
+                                return {"estado": True, "mensaje": "Documento creado exitosamente", "ruta": ruta_pdf_cotizacion_hotel}    
+                            else:
+                                return {"estado": False, "mensaje": "No se logro crear base64"}    
+                        else:
+                            return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"}
+                    else:
+                        return {"estado": False, "mensaje": "No se ha podido añadir imagen a docx"}  
+                else:
+                    return {"estado": False, "mensaje": "No se ha podido descargar la imagen del hotel"} 
+            else:
+                return {"estado": False, "mensaje": "No se logro armar la tabla"} 
+        else:
+            return {"estado": False, "mensaje": "No hay datos en el body"}
+
         
     @staticmethod
     def calcular_dias_noches(check_in, check_out):
@@ -1176,7 +1245,7 @@ class Actividad:
                     ruta_imagen_descargada = os.path.abspath(f"plantilla/imagen_actividad_{index}.jpeg")
                     ruta_imagen = (f"https://cotizador.mvevip.com/img/actividades_internas/{act['actividad']['codigo']}/{act['actividad']['tours']['id']}.jpg")
                     GenerarPdf.download_image(ruta_imagen, ruta_imagen_descargada)
-                    GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_actividad, "[imagen_actividad]", 200)
+                    GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_actividad, "[imagen_actividad]", 400)
                     docs_eliminar.append(ruta_imagen_descargada)
                     ruta_directorio_pdf = os.path.abspath("plantilla")
                     ruta_pdf_generado = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_actividad, ruta_directorio_pdf)
@@ -1189,16 +1258,12 @@ class Actividad:
                 else:
                     aux = False 
         if aux is True:
-            ruta_pdf = os.path.abspath("plantilla/actividades.pdf")
+            ruta_pdf = os.path.abspath("plantilla/cotizar_actividades.pdf")
             log_unir = GenerarPdf.unir_pdfs(pdfs_unir, ruta_pdf)
             if log_unir:
                 log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
                 if log_eliminar_data:
-                    pdf_base64 = GenerarPdf.archivo_a_base64(ruta_pdf)
-                    if pdf_base64:
-                        return {"estado": True, "mensaje": "Actividades creadas correctamente", "ruta": ruta_pdf}  
-                    else:
-                        return {"estado": False, "mensaje": "No se logro crear base64"}    
+                    return {"estado": True, "mensaje": "Actividades creadas correctamente", "ruta": ruta_pdf}  
                 else:
                     return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}
             else:
