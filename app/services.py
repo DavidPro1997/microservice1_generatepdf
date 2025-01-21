@@ -160,6 +160,7 @@ class Cotizador:
         else:
             # opcion3
             if "vuelo" in data and data["vuelo"]:
+                ciudad = data["vuelo"]["ida_ciudad_destino"].split(',')[0]
                 portada = Cotizador.generarPDFPortada(ciudad)
                 if portada["estado"]:
                     ruta_portada = portada["ruta"]
