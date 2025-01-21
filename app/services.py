@@ -1080,7 +1080,8 @@ class Hotel:
             pdfs_unir = []
             if dataActividades:
                 for actividad in dataActividades:
-                    actividades.append(f"• {actividad['actividad']['tours']['nombre']}")
+                    if actividad['actividad']['tours']['nombre'] != "Transfer":
+                        actividades.append(f"• {actividad['actividad']['tours']['nombre']}")
                 log_actividades = Actividad.generarPdfActividades(dataActividades)
                 if log_actividades["estado"]:
                     ruta_actividades = log_actividades["ruta"]
