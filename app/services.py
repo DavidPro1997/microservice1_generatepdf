@@ -193,67 +193,6 @@ class Cotizador:
     
 
 
-
-
-
-
-        # if data["vuelo"] or data["hotel"]:
-        #     docs_eliminar = []
-        #     if data["hotel"]:
-        #         ciudad = data["hotel"]["city"]
-        #         if data["actividades"]:
-        #             actividades = []
-        #             for actividad in data["actividades"]:
-        #                 actividades.append(f"• {actividad['actividad']['tours']['nombre']}")
-        #             log_actividades = Actividad.generarPdfActividades(data["actividades"])
-        #             if log_actividades["estado"]:
-        #                 ruta_actividades = log_actividades["ruta"]
-        #                 docs_eliminar.append(ruta_actividades)
-        #         log_hotel = Hotel.generar_pdf_hotel(data["hotel"])
-        #         if log_hotel["estado"]:
-        #             ruta_hotel = log_hotel["ruta"]
-        #             docs_eliminar.append(ruta_hotel)
-        #         log_paquete = Hotel.generar_pdf_paquete(data["hotel"], actividades)
-        #         if log_paquete["estado"]:
-        #             ruta_paquete = log_paquete["ruta"]
-        #             docs_eliminar.insert(1,ruta_paquete)
-        #     if data["vuelo"]:
-        #         vuelos = Cotizador.cotizar_vuelos(data["vuelo"])
-        #         if vuelos["estado"]:
-        #             ruta_vuelos = vuelos["ruta"]
-        #             docs_eliminar.append(ruta_vuelos)
-        #             if "ida_ciudad_destino" in data["vuelo"]:
-        #                 ciudad = data["vuelo"]["ida_ciudad_destino"].split(",")[0]
-        #         else:
-        #             return vuelos
-        #     if "costos" in data:
-        #         costos = Costos.generarPdfCostos(data["costos"])
-        #         if costos["estado"]:
-        #             ruta_costos = costos["ruta"]
-        #             docs_eliminar.append(ruta_costos)
-        #         else:
-        #             return costos
-        #     portada = Cotizador.generarPDFPortada(ciudad)
-        #     if portada:
-        #         ruta_portada = portada["ruta"]
-        #         docs_eliminar.insert(0, ruta_portada)
-        #         ruta_pdf = os.path.abspath("plantilla/cotizacion_completo.pdf")
-        #         log_unir_pdf = GenerarPdf.unir_pdfs(docs_eliminar, ruta_pdf)
-        #         if log_unir_pdf:
-        #             log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
-        #             if log_eliminar_data:
-        #                 pdf_base64 = GenerarPdf.archivo_a_base64(ruta_pdf)
-        #                 if pdf_base64:
-        #                     return {"estado": True, "mensaje": "Documento creado exitosamente", "pdf": pdf_base64}    
-        #                 else:
-        #                     return {"estado": False, "mensaje": "No se logro crear base64"} 
-        #             else:
-        #                 return {"estado": False, "mensaje": "No se logro eliminar los docs"} 
-        #         else:
-        #             return {"estado": False, "mensaje": "No se logro unir los docs"} 
-        #     else:
-        #         return portada
-        # return{"estado": False, "mensaje": "No hay datos de vuelos ni paquetes"}
     
     
     @staticmethod
@@ -664,7 +603,7 @@ class GenerarPdf:
             return False  # En caso de error, devolver False
 
     @staticmethod
-    def imagen_en_docx(image_path, docx_path, key, ancho_en_pt):
+    def imagen_en_docx(image_path, docx_path, key, ancho_en_pt=None, alto_en_pt=None):
         try:
             # Cargar el documento DOCX
             doc = Document(docx_path)
@@ -674,12 +613,18 @@ class GenerarPdf:
 
             # Calcular el ancho en proporción al alto especificado
             ancho_original, alto_original = image.size
-            proporción = ancho_en_pt / ancho_original
-            alto_en_pt = int(alto_original * proporción)
-            # Calcular el ancho en proporción al alto especificado
-            # ancho_original, alto_original = image.size
-            # proporción = alto_en_pt / alto_original
-            # ancho_en_pt = int(ancho_original * proporción)
+            
+            if ancho_en_pt is not None and alto_en_pt is None:
+                # Si solo se proporciona el ancho, calcular el alto manteniendo la proporción
+                proporción = ancho_en_pt / ancho_original
+                alto_en_pt = int(alto_original * proporción)
+            elif alto_en_pt is not None and ancho_en_pt is None:
+                # Si solo se proporciona el alto, calcular el ancho manteniendo la proporción
+                proporción = alto_en_pt / alto_original
+                ancho_en_pt = int(ancho_original * proporción)
+            else:
+                return False
+
 
             # Guardar la imagen en un buffer de memoria
             image_stream = BytesIO()
@@ -1186,44 +1131,8 @@ class Hotel:
                 return {"estado": False, "mensaje": "No se logro armar la tabla"} 
         else:
             return {"estado": False, "mensaje": "No hay datos en el body"}
-        
-    # @staticmethod
-    # def cotizar_hotel(dataHotel, dataActividades):
-    #     if dataHotel:
-    #         docs_eliminar = []
-    #         actividades = []
-    #         pdfs_unir = []
-    #         if dataActividades:
-    #             for actividad in dataActividades:
-    #                 actividades.append(f"• {actividad['actividad']['tours']['nombre']}")
-    #             log_actividades = Actividad.generarPdfActividades(dataActividades)
-    #             if log_actividades["estado"]:
-    #                 ruta_actividades = log_actividades["ruta"]
-    #                 pdfs_unir.append(ruta_actividades)
-    #                 docs_eliminar.append(ruta_actividades)
-    #         log_hotel = Hotel.generar_pdf_hotel(dataHotel)
-    #         if log_hotel["estado"]:
-    #             ruta_hotel = log_hotel["ruta"]
-    #             pdfs_unir.insert(0, ruta_hotel)
-    #             docs_eliminar.append(ruta_hotel)
-    #         log_paquete = Hotel.generar_pdf_paquete(dataHotel, actividades)
-    #         if log_paquete["estado"]:
-    #             ruta_paquete = log_paquete["ruta"]
-    #             pdfs_unir.insert(0, ruta_paquete)
-    #             docs_eliminar.append(ruta_paquete)
-    #         ruta_pdf = os.path.abspath("plantilla/cotizacion_hoteles.pdf")
-    #         log_unir = GenerarPdf.unir_pdfs(pdfs_unir, ruta_pdf)
-    #         if log_unir:
-    #             log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
-    #             if log_eliminar_data:
-    #                 return {"estado": True, "mensaje": "Documento creado exitosamente", "ruta": ruta_pdf}    
-    #             else:
-    #                 return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}    
-    #         else:
-    #             return {"estado": False, "mensaje": "No se logro unir los documentos"}
-    #     else:
-    #         return {"estado": False, "mensaje": "No hay datos en el body"}
-        
+
+
     
     @staticmethod
     def generar_pdf_paquete(dataHotel, actividades):
@@ -1301,7 +1210,7 @@ class Hotel:
                 ruta_imagen = dataHotel["imagen"]
                 log_descargar_imagen = GenerarPdf.download_image(ruta_imagen, ruta_imagen_descargada)
                 if log_descargar_imagen:
-                    log_imagen_docx = GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_hotel, "[imagen_hotel]", 400)
+                    log_imagen_docx = GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_hotel, "[imagen_hotel]", alto_en_pt=250)
                     if log_imagen_docx:
                         ruta_directorio_pdf = os.path.abspath("plantilla")
                         ruta_pdf_cotizacion_hotel = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_hotel, ruta_directorio_pdf)
@@ -1330,11 +1239,11 @@ class Hotel:
         fecha_in = datetime.strptime(check_in, formato)
         fecha_out = datetime.strptime(check_out, formato)
         
-        # Calcular la diferencia entre las fechas
-        diferencia = fecha_out - fecha_in
+        # Incluir el día del check-out en el cálculo
+        diferencia = (fecha_out - fecha_in).days + 1  # Sumar 1 para incluir el día de salida
         
         # Días y noches
-        dias = diferencia.days
+        dias = diferencia
         noches = dias - 1  # Las noches son un día menos que los días de estancia
         
         # Devolver un diccionario con los resultados
@@ -1361,7 +1270,7 @@ class Actividad:
                         ruta_imagen_descargada = os.path.abspath(f"plantilla/imagen_actividad_{index}.jpeg")
                         ruta_imagen = (f"https://cotizador.mvevip.com/img/actividades_internas/{act['actividad']['codigo']}/{act['actividad']['tours']['id']}.jpg")
                         GenerarPdf.download_image(ruta_imagen, ruta_imagen_descargada)
-                        GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_actividad, "[imagen_actividad]", 400)
+                        GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_actividad, "[imagen_actividad]", ancho_en_pt=400)
                         docs_eliminar.append(ruta_imagen_descargada)
                         ruta_directorio_pdf = os.path.abspath("plantilla")
                         ruta_pdf_generado = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_actividad, ruta_directorio_pdf)
