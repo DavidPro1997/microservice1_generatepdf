@@ -1080,8 +1080,7 @@ class Hotel:
             pdfs_unir = []
             if dataActividades:
                 for actividad in dataActividades:
-                    if actividad['actividad']['tours']['nombre'] != "Transfer":
-                        actividades.append(f"• {actividad['actividad']['tours']['nombre']}")
+                    actividades.append(f"• {actividad['actividad']['tours']['nombre']}")
                 log_actividades = Actividad.generarPdfActividades(dataActividades)
                 if log_actividades["estado"]:
                     ruta_actividades = log_actividades["ruta"]
@@ -1237,27 +1236,28 @@ class Actividad:
             docs_eliminar = []
             aux = True
             for index, act in enumerate(dataActividades):
-                ruta_plantilla_actividad = os.path.abspath("plantilla/plantilla_cotizar_actividades.docx")
-                ruta_docx_generado_actividad = os.path.abspath(f"plantilla/actividad_{index}.docx")
-                docs_eliminar.append(ruta_docx_generado_actividad)
-                estilos = {"fuente": "Helvetica", "numero":12}
-                log_reemplazar_cotitazion = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_actividad, ruta_docx_generado_actividad, act['actividad']['tours'], estilos)
-                if log_reemplazar_cotitazion:
-                    ruta_imagen_descargada = os.path.abspath(f"plantilla/imagen_actividad_{index}.jpeg")
-                    ruta_imagen = (f"https://cotizador.mvevip.com/img/actividades_internas/{act['actividad']['codigo']}/{act['actividad']['tours']['id']}.jpg")
-                    GenerarPdf.download_image(ruta_imagen, ruta_imagen_descargada)
-                    GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_actividad, "[imagen_actividad]", 400)
-                    docs_eliminar.append(ruta_imagen_descargada)
-                    ruta_directorio_pdf = os.path.abspath("plantilla")
-                    ruta_pdf_generado = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_actividad, ruta_directorio_pdf)
-                    if ruta_pdf_generado:
-                        pdfs_unir.append(ruta_pdf_generado)
-                        docs_eliminar.append(ruta_pdf_generado)
-                        aux = True
+                if act['actividad']['tours']['nombre'] != "Transfer":
+                    ruta_plantilla_actividad = os.path.abspath("plantilla/plantilla_cotizar_actividades.docx")
+                    ruta_docx_generado_actividad = os.path.abspath(f"plantilla/actividad_{index}.docx")
+                    docs_eliminar.append(ruta_docx_generado_actividad)
+                    estilos = {"fuente": "Helvetica", "numero":12}
+                    log_reemplazar_cotitazion = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_actividad, ruta_docx_generado_actividad, act['actividad']['tours'], estilos)
+                    if log_reemplazar_cotitazion:
+                        ruta_imagen_descargada = os.path.abspath(f"plantilla/imagen_actividad_{index}.jpeg")
+                        ruta_imagen = (f"https://cotizador.mvevip.com/img/actividades_internas/{act['actividad']['codigo']}/{act['actividad']['tours']['id']}.jpg")
+                        GenerarPdf.download_image(ruta_imagen, ruta_imagen_descargada)
+                        GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_actividad, "[imagen_actividad]", 400)
+                        docs_eliminar.append(ruta_imagen_descargada)
+                        ruta_directorio_pdf = os.path.abspath("plantilla")
+                        ruta_pdf_generado = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_actividad, ruta_directorio_pdf)
+                        if ruta_pdf_generado:
+                            pdfs_unir.append(ruta_pdf_generado)
+                            docs_eliminar.append(ruta_pdf_generado)
+                            aux = True
+                        else:
+                            aux = False 
                     else:
                         aux = False 
-                else:
-                    aux = False 
         if aux is True:
             ruta_pdf = os.path.abspath("plantilla/cotizar_actividades.pdf")
             log_unir = GenerarPdf.unir_pdfs(pdfs_unir, ruta_pdf)
