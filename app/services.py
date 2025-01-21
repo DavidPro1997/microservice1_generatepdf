@@ -97,6 +97,7 @@ class Cotizador:
             ciudad = data["hotel"]["city"]
             # opcion1
             if "vuelo" in data and data["vuelo"]:
+                ticket = "TICKET AEREO"
                 actividades = []
                 if data["actividades"] and "actividades" in data:
                     for actividad in data["actividades"]:
@@ -105,7 +106,7 @@ class Cotizador:
                 if portada["estado"]:
                     ruta_portada = portada["ruta"]
                     docs_eliminar.append(ruta_portada)
-                log_paquete = Hotel.generar_pdf_paquete(data["hotel"], actividades)
+                log_paquete = Hotel.generar_pdf_paquete(data["hotel"], actividades, ticket)
                 if log_paquete["estado"]:
                     ruta_paquete = log_paquete["ruta"]
                     docs_eliminar.append(ruta_paquete)
@@ -130,6 +131,7 @@ class Cotizador:
                 
             # opcion2
             else:
+                ticket = ""
                 actividades = []
                 if "actividades" in data and data["actividades"]:
                     for actividad in data["actividades"]:
@@ -138,7 +140,7 @@ class Cotizador:
                 if portada["estado"]:
                     ruta_portada = portada["ruta"]
                     docs_eliminar.insert(0, ruta_portada)
-                log_paquete = Hotel.generar_pdf_paquete(data["hotel"], actividades)
+                log_paquete = Hotel.generar_pdf_paquete(data["hotel"], actividades, ticket)
                 if log_paquete["estado"]:
                     ruta_paquete = log_paquete["ruta"]
                     docs_eliminar.append(ruta_paquete)
@@ -1137,7 +1139,7 @@ class Hotel:
 
     
     @staticmethod
-    def generar_pdf_paquete(dataHotel, actividades):
+    def generar_pdf_paquete(dataHotel, actividades, ticket):
         if dataHotel:
             docs_eliminar = []
             ruta_plantilla_paquete = os.path.abspath("plantilla/plantilla_cotizar_paquete.docx")
@@ -1159,7 +1161,8 @@ class Hotel:
                 "city": dataHotel["city"],
                 "dias": (f"{dias['dias']} dias y {dias['noches']} noches"),
                 "check_in": dataHotel["check_in"],
-                "check_out": dataHotel["check_out"]
+                "check_out": dataHotel["check_out"],
+                "ticket": ticket
             }
             log_reemplazar_paquete = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_paquete,ruta_docx_generado_paquete, datos, estilos)
             if log_reemplazar_paquete:
@@ -1167,9 +1170,9 @@ class Hotel:
                 ruta_docx_generado_paquete_actividades = os.path.abspath("plantilla/paquete_actividades.docx")
                 docs_eliminar.append(ruta_docx_generado_paquete_habitaciones)
                 docs_eliminar.append(ruta_docx_generado_paquete_actividades)
-                log_reemplazar_array_habitacion = GenerarPdf.reemplazar_clave_array(ruta_docx_generado_paquete, ruta_docx_generado_paquete_habitaciones, habitacion, estilos, "[habitacion]", alineacion="CENTER")
+                log_reemplazar_array_habitacion = GenerarPdf.reemplazar_clave_array(ruta_docx_generado_paquete, ruta_docx_generado_paquete_habitaciones, habitacion, estilos, "[habitacion]", alineacion="JUSTIFY")
                 if(log_reemplazar_array_habitacion):
-                    log_reemplazar_array_actividades = GenerarPdf.reemplazar_clave_array(ruta_docx_generado_paquete_habitaciones, ruta_docx_generado_paquete_actividades, actividades, estilos, "[actividades]", alineacion="CENTER")
+                    log_reemplazar_array_actividades = GenerarPdf.reemplazar_clave_array(ruta_docx_generado_paquete_habitaciones, ruta_docx_generado_paquete_actividades, actividades, estilos, "[actividades]", alineacion="JUSTIFY")
                     if(log_reemplazar_array_actividades):
                         ruta_directorio_pdf = os.path.abspath("plantilla")
                         ruta_pdf_cotizacion_paquete = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_paquete_actividades, ruta_directorio_pdf)
