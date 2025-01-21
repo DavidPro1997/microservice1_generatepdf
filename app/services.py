@@ -1283,33 +1283,12 @@ class Costos:
                 datos = {
                     "numA": dataCostos["detallado"]["adultos"]["numero"],
                     "numN": dataCostos["detallado"]["ninos"]["numero"],
-                    "total": round(float(dataCostos["detallado"]["total"]), 2)
+                    "total": round(float(dataCostos["detallado"]["total"]), 2),
+                    "precioAdulto": round(float(dataCostos["detallado"]["adultos"]["precio"]), 2),
+                    "precioNino": round(float(dataCostos["detallado"]["ninos"]["precio"]), 2),
+                    "precioAdulto_u": round(float(dataCostos["detallado"]["adultos"]["precio"]) / float(dataCostos["detallado"]["adultos"]["numero"]), 2) if float(dataCostos["detallado"]["adultos"]["numero"]) > 0 else 0,
+                    "precioNino_u": round(float(dataCostos["detallado"]["ninos"]["precio"]) / float(dataCostos["detallado"]["ninos"]["numero"]), 2) if float(dataCostos["detallado"]["ninos"]["numero"]) > 0 else 0
                 }
-                # Extraemos los valores actuales
-                numA = datos["numA"]
-                numN = datos["numN"]
-                precioAdultoTotal = round(float(dataCostos["detallado"]["adultos"]["precio"]), 2)
-                precioNinoTotal = round(float(dataCostos["detallado"]["ninos"]["precio"]), 2)
-                cargos = round(float(dataCostos["detallado"]["cargos"]), 2)
-
-                # Calculamos los valores unitarios
-                totalPersonas = numA + numN
-                if totalPersonas > 0:
-                    cargosPorAdulto = cargos * (numA / totalPersonas)
-                    cargosPorNino = cargos * (numN / totalPersonas)
-                else:
-                    cargosPorAdulto = 0
-                    cargosPorNino = 0
-
-                precioAdultoConCargos = precioAdultoTotal + cargosPorAdulto
-                precioNinoConCargos = precioNinoTotal + cargosPorNino
-
-                datos.update({
-                    "precioAdulto": round(precioAdultoConCargos, 2),
-                    "precioNino": round(precioNinoConCargos, 2),
-                    "precioAdulto_u": round(precioAdultoConCargos / numA, 2) if numA > 0 else 0,
-                    "precioNino_u": round(precioNinoConCargos / numN, 2) if numN > 0 else 0
-                })
             elif dataCostos["tipo"] == "1":
                 ruta_plantilla_actividad = os.path.abspath("plantilla/plantilla_cotizar_costos_no_detallado.docx")
                 datos = {
