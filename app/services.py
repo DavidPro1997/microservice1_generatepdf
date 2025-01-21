@@ -97,8 +97,8 @@ class Cotizador:
             ciudad = data["hotel"]["city"]
             # opcion1
             if "vuelo" in data and data["vuelo"]:
+                actividades = []
                 if data["actividades"] and "actividades" in data:
-                    actividades = []
                     for actividad in data["actividades"]:
                         actividades.append(f"• {actividad['actividad']['tours']['nombre']}")
                 portada = Cotizador.generarPDFPortada(ciudad)
@@ -130,8 +130,8 @@ class Cotizador:
                 
             # opcion2
             else:
+                actividades = []
                 if "actividades" in data and data["actividades"]:
-                    actividades = []
                     for actividad in data["actividades"]:
                         actividades.append(f"• {actividad['actividad']['tours']['nombre']}")
                 portada = Cotizador.generarPDFPortada(ciudad)
@@ -159,19 +159,20 @@ class Cotizador:
 
         else:
             # opcion3
-            portada = Cotizador.generarPDFPortada(ciudad)
-            if portada["estado"]:
-                ruta_portada = portada["ruta"]
-                docs_eliminar.append(ruta_portada)
-            vuelos = Cotizador.cotizar_vuelos(data["vuelo"])
-            if vuelos["estado"]:
-                ruta_vuelos = vuelos["ruta"]
-                docs_eliminar.append(ruta_vuelos)
-            if "costos" in data and data["costos"]:
-                costos = Costos.generarPdfCostos(data["costos"])
-                if costos["estado"]:
-                    ruta_costos = costos["ruta"]
-                    docs_eliminar.append(ruta_costos)
+            if "vuelo" in data and data["vuelo"]:
+                portada = Cotizador.generarPDFPortada(ciudad)
+                if portada["estado"]:
+                    ruta_portada = portada["ruta"]
+                    docs_eliminar.append(ruta_portada)
+                vuelos = Cotizador.cotizar_vuelos(data["vuelo"])
+                if vuelos["estado"]:
+                    ruta_vuelos = vuelos["ruta"]
+                    docs_eliminar.append(ruta_vuelos)
+                if "costos" in data and data["costos"]:
+                    costos = Costos.generarPdfCostos(data["costos"])
+                    if costos["estado"]:
+                        ruta_costos = costos["ruta"]
+                        docs_eliminar.append(ruta_costos)
             # opcion4
             else:
                 return{"estado": False, "mensaje": "No hay datos de vuelos ni paquetes"}
