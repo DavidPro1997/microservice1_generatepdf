@@ -93,10 +93,10 @@ class Cotizador:
     @staticmethod
     def cotizar_completo(data):
         docs_eliminar = []
-        if data["hotel"] and "hotel" in data:
+        if "hotel" in data and data["hotel"]:
             ciudad = data["hotel"]["city"]
             # opcion1
-            if data["vuelo"] and "vuelo" in data:
+            if "vuelo" in data and data["vuelo"]:
                 if data["actividades"] and "actividades" in data:
                     actividades = []
                     for actividad in data["actividades"]:
@@ -117,12 +117,12 @@ class Cotizador:
                 if log_hotel["estado"]:
                     ruta_hotel = log_hotel["ruta"]
                     docs_eliminar.append(ruta_hotel)
-                if data["actividades"] and "actividades" in data:
+                if "actividades" in data and data["actividades"]:
                     log_actividades = Actividad.generarPdfActividades(data["actividades"])
                     if log_actividades["estado"]:
                         ruta_actividades = log_actividades["ruta"]
                         docs_eliminar.append(ruta_actividades)
-                if data["costos"] and "costos" in data:
+                if "costos" in data and data["costos"]:
                     costos = Costos.generarPdfCostos(data["costos"])
                     if costos["estado"]:
                         ruta_costos = costos["ruta"]
@@ -130,7 +130,7 @@ class Cotizador:
                 
             # opcion2
             else:
-                if data["actividades"] and "actividades" in data:
+                if "actividades" in data and data["actividades"]:
                     actividades = []
                     for actividad in data["actividades"]:
                         actividades.append(f"• {actividad['actividad']['tours']['nombre']}")
@@ -146,12 +146,12 @@ class Cotizador:
                 if log_hotel["estado"]:
                     ruta_hotel = log_hotel["ruta"]
                     docs_eliminar.append(ruta_hotel)
-                if data["actividades"] and "actividades" in data:
+                if "actividades" in data and data["actividades"]:
                     log_actividades = Actividad.generarPdfActividades(data["actividades"])
                     if log_actividades["estado"]:
                         ruta_actividades = log_actividades["ruta"]
                         docs_eliminar.append(ruta_actividades)
-                if data["costos"] and "costos" in data:
+                if "costos" in data and data["costos"]:
                     costos = Costos.generarPdfCostos(data["costos"])
                     if costos["estado"]:
                         ruta_costos = costos["ruta"]
@@ -167,7 +167,7 @@ class Cotizador:
             if vuelos["estado"]:
                 ruta_vuelos = vuelos["ruta"]
                 docs_eliminar.append(ruta_vuelos)
-            if data["costos"] and "costos" in data:
+            if "costos" in data and data["costos"]:
                 costos = Costos.generarPdfCostos(data["costos"])
                 if costos["estado"]:
                     ruta_costos = costos["ruta"]
