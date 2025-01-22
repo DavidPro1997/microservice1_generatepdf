@@ -93,6 +93,7 @@ class Cotizador:
     @staticmethod
     def cotizar_completo(data):
         docs_eliminar = []
+        incluye = []
         if "hotel" in data and data["hotel"]:
             ciudad = data["hotel"]["city"]
             # opcion1
@@ -112,19 +113,22 @@ class Cotizador:
                     docs_eliminar.append(ruta_paquete)
                 vuelos = Cotizador.cotizar_vuelos(data["vuelo"])
                 if vuelos["estado"]:
+                    incluye.append("tickets aéreos")
                     ruta_vuelos = vuelos["ruta"]
                     docs_eliminar.append(ruta_vuelos)
                 log_hotel = Hotel.generar_pdf_hotel(data["hotel"])
                 if log_hotel["estado"]:
+                    incluye.append("hospedaje")
                     ruta_hotel = log_hotel["ruta"]
                     docs_eliminar.append(ruta_hotel)
                 if "actividades" in data and data["actividades"]:
                     log_actividades = Actividad.generarPdfActividades(data["actividades"])
                     if log_actividades["estado"]:
+                        incluye.append("actividades")
                         ruta_actividades = log_actividades["ruta"]
                         docs_eliminar.append(ruta_actividades)
                 if "costos" in data and data["costos"]:
-                    costos = Costos.generarPdfCostos(data["costos"])
+                    costos = Costos.generarPdfCostos(data["costos"], incluye)
                     if costos["estado"]:
                         ruta_costos = costos["ruta"]
                         docs_eliminar.append(ruta_costos)
@@ -146,15 +150,17 @@ class Cotizador:
                     docs_eliminar.append(ruta_paquete)
                 log_hotel = Hotel.generar_pdf_hotel(data["hotel"])
                 if log_hotel["estado"]:
+                    incluye.append("hospedaje")
                     ruta_hotel = log_hotel["ruta"]
                     docs_eliminar.append(ruta_hotel)
                 if "actividades" in data and data["actividades"]:
                     log_actividades = Actividad.generarPdfActividades(data["actividades"])
                     if log_actividades["estado"]:
+                        incluye.append("actividades")
                         ruta_actividades = log_actividades["ruta"]
                         docs_eliminar.append(ruta_actividades)
                 if "costos" in data and data["costos"]:
-                    costos = Costos.generarPdfCostos(data["costos"])
+                    costos = Costos.generarPdfCostos(data["costos"], incluye)
                     if costos["estado"]:
                         ruta_costos = costos["ruta"]
                         docs_eliminar.append(ruta_costos)
@@ -169,10 +175,11 @@ class Cotizador:
                     docs_eliminar.append(ruta_portada)
                 vuelos = Cotizador.cotizar_vuelos(data["vuelo"])
                 if vuelos["estado"]:
+                    incluye.append("tickets aéreos")
                     ruta_vuelos = vuelos["ruta"]
                     docs_eliminar.append(ruta_vuelos)
                 if "costos" in data and data["costos"]:
-                    costos = Costos.generarPdfCostos(data["costos"])
+                    costos = Costos.generarPdfCostos(data["costos"], incluye)
                     if costos["estado"]:
                         ruta_costos = costos["ruta"]
                         docs_eliminar.append(ruta_costos)
@@ -209,7 +216,7 @@ class Cotizador:
             ruta_plantilla_portada = os.path.abspath("plantilla/plantilla_cotizar_portada.docx")
             ruta_docx_generado_portada = os.path.abspath(f"plantilla/portada.docx")
             docs_eliminar.append(ruta_docx_generado_portada)
-            estilos = {"fuente": "Helvetica", "numero":50, "color": "#FFFFFF"}
+            estilos = {"fuente": "Bodoni MT Black", "numero":50, "color": "#FFFFFF"}
             log_reemplazar_cotitazion = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_portada, ruta_docx_generado_portada, datos, estilos, "CENTER")
             if log_reemplazar_cotitazion:
                 ruta_directorio_pdf = os.path.abspath("plantilla")
@@ -1141,6 +1148,8 @@ class Hotel:
     @staticmethod
     def generar_pdf_paquete(dataHotel, actividades, ticket):
         if dataHotel:
+            if not actividades:
+                actividades = ["No incluye actividades"]
             docs_eliminar = []
             ruta_plantilla_paquete = os.path.abspath("plantilla/plantilla_cotizar_paquete.docx")
             estilos = {"fuente": "Helvetica", "numero":12}
@@ -1304,12 +1313,14 @@ class Actividad:
 
 class Costos:
     @staticmethod
-    def generarPdfCostos(dataCostos):
+    def generarPdfCostos(dataCostos, incluye):
         if dataCostos:
             docs_eliminar = []
+            incluye_paquete = ", ".join(incluye) + "."
             if dataCostos["tipo"] == "0":
                 ruta_plantilla_actividad = os.path.abspath("plantilla/plantilla_cotizar_costos_detallado.docx")
                 datos = {
+                    "incluye": incluye_paquete,
                     "numA": dataCostos["detallado"]["adultos"]["numero"],
                     "numN": dataCostos["detallado"]["ninos"]["numero"],
                     "total": round(float(dataCostos["detallado"]["total"]), 2),
@@ -1321,6 +1332,7 @@ class Costos:
             elif dataCostos["tipo"] == "1":
                 ruta_plantilla_actividad = os.path.abspath("plantilla/plantilla_cotizar_costos_no_detallado.docx")
                 datos = {
+                    "incluye": incluye_paquete,
                     "paquete": dataCostos["noDetallado"]["paquete"],
                     "vuelo": dataCostos["noDetallado"]["vuelo"],
                     "total": round(float(dataCostos["noDetallado"]["paquete"]) + float(dataCostos["noDetallado"]["vuelo"]), 2)
