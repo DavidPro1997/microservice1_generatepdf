@@ -1333,8 +1333,8 @@ class Costos:
                 ruta_plantilla_actividad = os.path.abspath("plantilla/plantilla_cotizar_costos_no_detallado.docx")
                 datos = {
                     "incluye": incluye_paquete,
-                    "paquete": dataCostos["noDetallado"]["paquete"],
-                    "vuelo": dataCostos["noDetallado"]["vuelo"],
+                    "paquete": round(float(dataCostos["noDetallado"]["paquete"]),2),
+                    "vuelo": round(float(dataCostos["noDetallado"]["vuelo"]),2),
                     "total": round(float(dataCostos["noDetallado"]["paquete"]) + float(dataCostos["noDetallado"]["vuelo"]), 2)
                 }
             else:
