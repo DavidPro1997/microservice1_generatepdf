@@ -216,7 +216,7 @@ class Cotizador:
             ruta_plantilla_portada = os.path.abspath("plantilla/plantilla_cotizar_portada.docx")
             ruta_docx_generado_portada = os.path.abspath(f"plantilla/portada.docx")
             docs_eliminar.append(ruta_docx_generado_portada)
-            estilos = {"fuente": "Bodoni MT Black", "numero":50, "color": "#FFFFFF"}
+            estilos = {"fuente": "Arial black", "numero":50, "color": "#FFFFFF"}
             log_reemplazar_cotitazion = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_portada, ruta_docx_generado_portada, datos, estilos, "CENTER")
             if log_reemplazar_cotitazion:
                 ruta_directorio_pdf = os.path.abspath("plantilla")
