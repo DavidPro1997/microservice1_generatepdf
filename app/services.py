@@ -100,7 +100,7 @@ class Cotizador:
             if "vuelo" in data and data["vuelo"]:
                 ticket = "Si incluye ticket aéreo"
                 actividades = []
-                if data["actividades"] and "actividades" in data:
+                if "actividades" in data and data["actividades"]:
                     for actividad in data["actividades"]:
                         actividades.append(f"{actividad['actividad']['tours']['nombre']}")
                 portada = Cotizador.generarPDFPortada(ciudad)
@@ -139,7 +139,7 @@ class Cotizador:
                 actividades = []
                 if "actividades" in data and data["actividades"]:
                     for actividad in data["actividades"]:
-                        actividades.append(f"• {actividad['actividad']['tours']['nombre']}")
+                        actividades.append(f"{actividad['actividad']['tours']['nombre']}")
                 portada = Cotizador.generarPDFPortada(ciudad)
                 if portada["estado"]:
                     ruta_portada = portada["ruta"]
