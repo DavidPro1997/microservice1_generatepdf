@@ -97,7 +97,7 @@ class Cotizador:
             ciudad = data["hotel"]["city"]
             # opcion1
             if "vuelo" in data and data["vuelo"]:
-                ticket = "TICKET AEREO"
+                ticket = "Si incluye ticket aéreo"
                 actividades = []
                 if data["actividades"] and "actividades" in data:
                     for actividad in data["actividades"]:
@@ -131,7 +131,7 @@ class Cotizador:
                 
             # opcion2
             else:
-                ticket = ""
+                ticket = "No incluye ticket aéreo"
                 actividades = []
                 if "actividades" in data and data["actividades"]:
                     for actividad in data["actividades"]:
