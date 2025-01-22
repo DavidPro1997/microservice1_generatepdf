@@ -1170,9 +1170,9 @@ class Hotel:
                 ruta_docx_generado_paquete_actividades = os.path.abspath("plantilla/paquete_actividades.docx")
                 docs_eliminar.append(ruta_docx_generado_paquete_habitaciones)
                 docs_eliminar.append(ruta_docx_generado_paquete_actividades)
-                log_reemplazar_array_habitacion = GenerarPdf.reemplazar_clave_array(ruta_docx_generado_paquete, ruta_docx_generado_paquete_habitaciones, habitacion, estilos, "[habitacion]", alineacion="JUSTIFY")
+                log_reemplazar_array_habitacion = GenerarPdf.reemplazar_clave_array(ruta_docx_generado_paquete, ruta_docx_generado_paquete_habitaciones, habitacion, estilos, "[habitacion]")
                 if(log_reemplazar_array_habitacion):
-                    log_reemplazar_array_actividades = GenerarPdf.reemplazar_clave_array(ruta_docx_generado_paquete_habitaciones, ruta_docx_generado_paquete_actividades, actividades, estilos, "[actividades]", alineacion="JUSTIFY")
+                    log_reemplazar_array_actividades = GenerarPdf.reemplazar_clave_array(ruta_docx_generado_paquete_habitaciones, ruta_docx_generado_paquete_actividades, actividades, estilos, "[actividades]")
                     if(log_reemplazar_array_actividades):
                         ruta_directorio_pdf = os.path.abspath("plantilla")
                         ruta_pdf_cotizacion_paquete = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_paquete_actividades, ruta_directorio_pdf)
