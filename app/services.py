@@ -101,7 +101,7 @@ class Cotizador:
                 actividades = []
                 if data["actividades"] and "actividades" in data:
                     for actividad in data["actividades"]:
-                        actividades.append(f"     • {actividad['actividad']['tours']['nombre']}")
+                        actividades.append(f"{actividad['actividad']['tours']['nombre']}")
                 portada = Cotizador.generarPDFPortada(ciudad)
                 if portada["estado"]:
                     ruta_portada = portada["ruta"]
@@ -1153,7 +1153,7 @@ class Hotel:
             for room in dataHotel["rooms"]:
                 adultos = adultos + int(room["adults"])
                 ninos = ninos + int(room["children"])
-                detalle_habitacion = (f"     •{room['room_number']} habitacion(es) {room['acomodation']} {room['room_name']} - {room['board_basis']}")
+                detalle_habitacion = (f"{room['room_number']} habitacion(es) {room['acomodation']} {room['room_name']} - {room['board_basis']}")
                 habitacion.append(detalle_habitacion)
             datos = {
                 "adultos": (f"{adultos} adulto(s)"),
