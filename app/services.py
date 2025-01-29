@@ -196,7 +196,7 @@ class Cotizador:
             else:
                 return {"estado": False, "mensaje": "No se logro eliminar los docs"} 
         else:
-            return {"estado": False, "mensaje": "No se logro unir los docs"}
+            return {"estado": False, "mensaje": "No se logro unir los docs generales"}
     
 
 
@@ -275,7 +275,7 @@ class Cotizador:
                         if log_eliminar_data:
                             return {"estado": True, "mensaje": "Documento creado exitosamente", "ruta": ruta_pdf_cotizacion_vuelos}    
                         else:
-                            return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}
+                            return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares al crear los vuelos"}
                     else:
                         return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"} 
                 else:
@@ -1310,7 +1310,7 @@ class Hotel:
                     if log_eliminar_data:
                         return {"estado": True, "mensaje": "Documento creado exitosamente", "ruta": ruta_hoteles_unidos}    
                 else:
-                    return {"estado": False, "mensaje": "No se logro crear base64"}    
+                    return {"estado": False, "mensaje": "No se logro unir los pdfs de hoteles"}    
             else:
                 return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"}
         else:
