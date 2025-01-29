@@ -164,7 +164,7 @@ class Cotizador:
         else:
             # opcion3
             if "vuelo" in data and data["vuelo"]:
-                ciudad = "-".join(item[f"ciudad_destino{index}"] for index,item in enumerate(data["vuelo"]["segmentos"]))
+                ciudad = "\n".join(item[f"ciudad_destino{index}"].split(",")[0] for index, item in enumerate(data["vuelo"]["segmentos"]) if index < len(data["vuelo"]["segmentos"]) - 1)
                 portada = Cotizador.generarPDFPortada(ciudad)
                 if portada["estado"]:
                     ruta_portada = portada["ruta"]
@@ -243,7 +243,10 @@ class Cotizador:
             ruta_docx_generado_cotizacion_vuelos_segmento = os.path.abspath("plantilla/cotizacion_vuelos_seg.docx")
             docs_eliminar.append(ruta_docx_generado_cotizacion_vuelos_segmento)
             shutil.copy(ruta_plantilla_cotizador_vuelos, ruta_docx_generado_cotizacion_vuelos_segmento)
-            estilos_tabla = {"fuente": "Helvetica", "numero":7}
+            if numero_segmentos <= 2:
+                estilos_tabla = {"fuente": "Helvetica", "numero":10}
+            else:
+                estilos_tabla = {"fuente": "Helvetica", "numero":7}
             aux = True
             resultado = {}
             for index, segmento in enumerate(data["segmentos"]):
@@ -762,7 +765,7 @@ class GenerarPdf:
     def armar_tabla_vuelos(archivo_entrada, archivo_salida, variable,datos ,estilos):
         columnas = ["clase", "detalle_salida", "duracion", "detalle_destino"]
         numeroFilas = len(datos)
-        ancho_columnas = [Inches(0.5), Inches(2.5), Inches(0.5), Inches(2.5)]
+        ancho_columnas = [Inches(0.9), Inches(2.3), Inches(0.4), Inches(2.3)]
         try:
             doc = Document(archivo_entrada)
             for para in doc.paragraphs:
@@ -1227,6 +1230,8 @@ class Hotel:
                         for tour in item["tours"]:
                             act[f"actividades{index}"].append(tour["nombre"])
                         break  # Romper el ciclo si ya se encuentra el id
+                if not act[f"actividades{index}"]:  # Verifica si está vacío
+                    act[f"actividades{index}"].append("No incluye actividades")  
                 datos = {
                     f"adultos": (f"{adultos} adulto(s)"),
                     f"ninos": (f"{ninos} niño(s)"),
