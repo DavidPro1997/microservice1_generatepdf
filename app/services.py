@@ -1,6 +1,6 @@
-import os, requests, traceback
+import os, requests, traceback, shutil
 from docx import Document # type: ignore
-from docx.shared import Pt # type: ignore
+from docx.shared import Pt, Inches # type: ignore
 from docx.shared import Cm, RGBColor # type: ignore
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT # type: ignore
 import subprocess
@@ -95,19 +95,15 @@ class Cotizador:
         docs_eliminar = []
         incluye = []
         if "hotel" in data and data["hotel"]:
-            ciudad = data["hotel"]["city"]
+            ciudad = "\n".join(item["city"] for item in data["hotel"])
             # opcion1
             if "vuelo" in data and data["vuelo"]:
                 ticket = "Si incluye ticket aéreo"
-                actividades = []
-                if "actividades" in data and data["actividades"]:
-                    for actividad in data["actividades"]:
-                        actividades.append(f"{actividad['actividad']['tours']['nombre']}")
                 portada = Cotizador.generarPDFPortada(ciudad)
                 if portada["estado"]:
                     ruta_portada = portada["ruta"]
                     docs_eliminar.append(ruta_portada)
-                log_paquete = Hotel.generar_pdf_paquete(data["hotel"], actividades, ticket)
+                log_paquete = Hotel.generar_pdf_paquete(data["hotel"], data["actividades"], ticket)
                 if log_paquete["estado"]:
                     ruta_paquete = log_paquete["ruta"]
                     docs_eliminar.append(ruta_paquete)
@@ -136,15 +132,15 @@ class Cotizador:
             # opcion2
             else:
                 ticket = "No incluye ticket aéreo"
-                actividades = []
-                if "actividades" in data and data["actividades"]:
-                    for actividad in data["actividades"]:
-                        actividades.append(f"{actividad['actividad']['tours']['nombre']}")
+                # actividades = []
+                # if "actividades" in data and data["actividades"]:
+                #     for actividad in data["actividades"]:
+                #         actividades.append(f"{actividad['actividad']['tours']['nombre']}")
                 portada = Cotizador.generarPDFPortada(ciudad)
                 if portada["estado"]:
                     ruta_portada = portada["ruta"]
                     docs_eliminar.insert(0, ruta_portada)
-                log_paquete = Hotel.generar_pdf_paquete(data["hotel"], actividades, ticket)
+                log_paquete = Hotel.generar_pdf_paquete(data["hotel"], data["actividades"], ticket)
                 if log_paquete["estado"]:
                     ruta_paquete = log_paquete["ruta"]
                     docs_eliminar.append(ruta_paquete)
@@ -168,7 +164,7 @@ class Cotizador:
         else:
             # opcion3
             if "vuelo" in data and data["vuelo"]:
-                ciudad = data["vuelo"]["ida_ciudad_destino"].split(',')[0]
+                ciudad = "-".join(item[f"ciudad_destino{index}"] for index,item in enumerate(data["vuelo"]["segmentos"]))
                 portada = Cotizador.generarPDFPortada(ciudad)
                 if portada["estado"]:
                     ruta_portada = portada["ruta"]
@@ -216,7 +212,11 @@ class Cotizador:
             ruta_plantilla_portada = os.path.abspath("plantilla/plantilla_cotizar_portada.docx")
             ruta_docx_generado_portada = os.path.abspath(f"plantilla/portada.docx")
             docs_eliminar.append(ruta_docx_generado_portada)
-            estilos = {"fuente": "Helvetica", "numero":50, "color": "#FFFFFF"}
+            longitud = len(ciudad)
+            if longitud < 10:
+                estilos = {"fuente": "Helvetica", "numero":60, "color": "#FFFFFF"}
+            else:
+                estilos = {"fuente": "Helvetica", "numero":40, "color": "#FFFFFF"}
             log_reemplazar_cotitazion = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_portada, ruta_docx_generado_portada, datos, estilos, "CENTER")
             if log_reemplazar_cotitazion:
                 ruta_directorio_pdf = os.path.abspath("plantilla")
@@ -237,32 +237,74 @@ class Cotizador:
     @staticmethod
     def cotizar_vuelos(data):
         if data:
-            detalle_vuelos_ida = data["detalle_ida_vuelos"]
-            detalle_vuelos_vuelta = data["detalle_vuelta_vuelos"]
-            data.pop("detalle_ida_vuelos")
-            data.pop("detalle_vuelta_vuelos")
-            ruta_plantilla_cotizador_vuelos = os.path.abspath("plantilla/plantilla_cotizar_vuelos.docx")
-            ruta_docx_generado_cotizacion_vuelos_ida = os.path.abspath("plantilla/cotizacion_vuelos_ida.docx")
-            ruta_docx_generado_cotizacion_vuelos_vuelta = os.path.abspath("plantilla/cotizacion_vuelos_vuelta.docx")
-            ruta_docx_generado_cotizacion_vuelos = os.path.abspath("plantilla/cotizacion_vuelos.docx")
-            estilos_tabla = {"fuente": "Helvetica", "numero":8}
-            log_vuelos_ida = GenerarPdf.armar_tabla_vuelos(ruta_plantilla_cotizador_vuelos, ruta_docx_generado_cotizacion_vuelos_ida,"[detalle_ida_vuelos]",detalle_vuelos_ida ,estilos_tabla)
-            log_vuelos_vuelta = GenerarPdf.armar_tabla_vuelos(ruta_docx_generado_cotizacion_vuelos_ida, ruta_docx_generado_cotizacion_vuelos_vuelta,"[detalle_vuelta_vuelos]",detalle_vuelos_vuelta ,estilos_tabla)
-            log_reemplazar_cotitazion = GenerarPdf.reemplazar_texto_docx(ruta_docx_generado_cotizacion_vuelos_vuelta, ruta_docx_generado_cotizacion_vuelos, data, estilos_tabla)
-            if log_reemplazar_cotitazion and log_vuelos_ida and log_vuelos_vuelta:
-                ruta_directorio_pdf = os.path.abspath("plantilla")
-                ruta_pdf_cotizacion_vuelos = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_cotizacion_vuelos, ruta_directorio_pdf)
-                if ruta_pdf_cotizacion_vuelos:
-                    docs_eliminar = [ruta_docx_generado_cotizacion_vuelos, ruta_docx_generado_cotizacion_vuelos_ida, ruta_docx_generado_cotizacion_vuelos_vuelta]
-                    log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
-                    if log_eliminar_data:
-                        return {"estado": True, "mensaje": "Documento creado exitosamente", "ruta": ruta_pdf_cotizacion_vuelos}    
-                    else:
-                        return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}
+            docs_eliminar = []
+            numero_segmentos = len(data["segmentos"])
+            ruta_plantilla_cotizador_vuelos = os.path.abspath(f"plantilla/plantilla_cotizar_vuelos_{numero_segmentos}.docx")
+            ruta_docx_generado_cotizacion_vuelos_segmento = os.path.abspath("plantilla/cotizacion_vuelos_seg.docx")
+            docs_eliminar.append(ruta_docx_generado_cotizacion_vuelos_segmento)
+            shutil.copy(ruta_plantilla_cotizador_vuelos, ruta_docx_generado_cotizacion_vuelos_segmento)
+            estilos_tabla = {"fuente": "Helvetica", "numero":7}
+            aux = True
+            resultado = {}
+            for index, segmento in enumerate(data["segmentos"]):
+                variable = (f"[detalle_vuelo{index}]")
+                detalle_vuelo = segmento[f"detalle_vuelo{index}"]
+                log_vuelos_legs = GenerarPdf.armar_tabla_vuelos(ruta_docx_generado_cotizacion_vuelos_segmento, ruta_docx_generado_cotizacion_vuelos_segmento,variable,detalle_vuelo ,estilos_tabla)
+                if not log_vuelos_legs:
+                    aux = False
+                if variable in segmento:  # Verifica si la clave existe en el diccionario
+                    segmento.pop(variable)
+                resultado.update(segmento)
+            if aux:
+                data.pop("segmentos")
+                resultado.update(data)
+                ruta_aereolina_imagen = os.path.abspath(f"img/aereolinas_logos/{data['aereolina'].lower()}.png")
+                if os.path.exists(ruta_aereolina_imagen):
+                    GenerarPdf.imagen_en_docx(ruta_aereolina_imagen, ruta_docx_generado_cotizacion_vuelos_segmento, "[imagen_aereolina]", alto_en_pt=17)
                 else:
-                    return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"}   
+                    resultado["imagen_aereolina"] = ""
+                log_reemplazar_cotitazion = GenerarPdf.reemplazar_texto_docx(ruta_docx_generado_cotizacion_vuelos_segmento, ruta_docx_generado_cotizacion_vuelos_segmento, resultado, estilos_tabla)
+                if log_reemplazar_cotitazion:
+                    ruta_directorio_pdf = os.path.abspath("plantilla")
+                    ruta_pdf_cotizacion_vuelos = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_cotizacion_vuelos_segmento, ruta_directorio_pdf)
+                    if ruta_pdf_cotizacion_vuelos:
+                        log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
+                        if log_eliminar_data:
+                            return {"estado": True, "mensaje": "Documento creado exitosamente", "ruta": ruta_pdf_cotizacion_vuelos}    
+                        else:
+                            return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}
+                    else:
+                        return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"} 
+                else:
+                    return {"estado": False, "mensaje": "No se ha posido reemplazar los datos en la plantilla"}
             else:
-                return {"estado": False, "mensaje": "No se ha posido reemplazar los datos en la plantilla"}   
+                return {"estado": False, "mensaje": "No se ha posido reemplazar las escalas en la plantilla"}
+
+            # detalle_vuelos_ida = data["detalle_ida_vuelos"]
+            # detalle_vuelos_vuelta = data["detalle_vuelta_vuelos"]
+            # data.pop("detalle_ida_vuelos")
+            # data.pop("detalle_vuelta_vuelos")
+            # ruta_docx_generado_cotizacion_vuelos_ida = os.path.abspath("plantilla/cotizacion_vuelos_ida.docx")
+            # ruta_docx_generado_cotizacion_vuelos_vuelta = os.path.abspath("plantilla/cotizacion_vuelos_vuelta.docx")
+            # ruta_docx_generado_cotizacion_vuelos = os.path.abspath("plantilla/cotizacion_vuelos.docx")
+            # estilos_tabla = {"fuente": "Helvetica", "numero":8}
+            # log_vuelos_ida = GenerarPdf.armar_tabla_vuelos(ruta_plantilla_cotizador_vuelos, ruta_docx_generado_cotizacion_vuelos_ida,"[detalle_ida_vuelos]",detalle_vuelos_ida ,estilos_tabla)
+            # log_vuelos_vuelta = GenerarPdf.armar_tabla_vuelos(ruta_docx_generado_cotizacion_vuelos_ida, ruta_docx_generado_cotizacion_vuelos_vuelta,"[detalle_vuelta_vuelos]",detalle_vuelos_vuelta ,estilos_tabla)
+            # log_reemplazar_cotitazion = GenerarPdf.reemplazar_texto_docx(ruta_docx_generado_cotizacion_vuelos_vuelta, ruta_docx_generado_cotizacion_vuelos, data, estilos_tabla)
+            # if log_reemplazar_cotitazion and log_vuelos_ida and log_vuelos_vuelta:
+            #     ruta_directorio_pdf = os.path.abspath("plantilla")
+            #     ruta_pdf_cotizacion_vuelos = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_cotizacion_vuelos, ruta_directorio_pdf)
+            #     if ruta_pdf_cotizacion_vuelos:
+            #         docs_eliminar = [ruta_docx_generado_cotizacion_vuelos, ruta_docx_generado_cotizacion_vuelos_ida, ruta_docx_generado_cotizacion_vuelos_vuelta]
+            #         log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
+            #         if log_eliminar_data:
+            #             return {"estado": True, "mensaje": "Documento creado exitosamente", "ruta": ruta_pdf_cotizacion_vuelos}    
+            #         else:
+            #             return {"estado": False, "mensaje": "No se logro eliminar los documentos auxiliares"}
+            #     else:
+            #         return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"}   
+            # else:
+            #     return {"estado": False, "mensaje": "No se ha posido reemplazar los datos en la plantilla"}   
         else:
             return {"estado": False, "mensaje": "No hay datos en el body"}  
 
@@ -501,7 +543,7 @@ class GenerarPdf:
             doc = Document(archivo_entrada)
 
             # Construir el texto a insertar a partir del array de strings
-            texto_reemplazo = "\n\n".join(array)
+            texto_reemplazo = "\n".join(array)
 
             def aplicar_reemplazo(parrafo):
                 """Reemplaza el texto y aplica estilo y alineación."""
@@ -637,9 +679,15 @@ class GenerarPdf:
                 return False
 
 
+            extension = os.path.splitext(image_path)[1].lower()
+            if extension == '.png':
+                formato_imagen = 'PNG'
+            else:
+                formato_imagen = 'JPEG'
+
             # Guardar la imagen en un buffer de memoria
             image_stream = BytesIO()
-            image.save(image_stream, format="JPEG")  # Guardar como JPEG
+            image.save(image_stream, format=formato_imagen)  # Guardar como JPEG
             image_stream.seek(0)
 
             # Bandera para verificar si se encontró la clave
@@ -714,6 +762,7 @@ class GenerarPdf:
     def armar_tabla_vuelos(archivo_entrada, archivo_salida, variable,datos ,estilos):
         columnas = ["clase", "detalle_salida", "duracion", "detalle_destino"]
         numeroFilas = len(datos)
+        ancho_columnas = [Inches(0.5), Inches(2.5), Inches(0.5), Inches(2.5)]
         try:
             doc = Document(archivo_entrada)
             for para in doc.paragraphs:
@@ -721,6 +770,10 @@ class GenerarPdf:
                     para.clear()
                     table = doc.add_table(rows=numeroFilas, cols=4)
                     table.style = 'Plain Table 2'
+
+                    # Aplicar ancho a las columnas
+                    for i, column in enumerate(table.columns):
+                        column.width = ancho_columnas[i]
                     
                     # Primero agregamos las filas de datos a la tabla
                     for i, row in enumerate(table.rows):
@@ -1148,57 +1201,57 @@ class Hotel:
     @staticmethod
     def generar_pdf_paquete(dataHotel, actividades, ticket):
         if dataHotel:
-            if not actividades:
-                actividades = ["No incluye actividades"]
             docs_eliminar = []
-            ruta_plantilla_paquete = os.path.abspath("plantilla/plantilla_cotizar_paquete.docx")
-            estilos = {"fuente": "Helvetica", "numero":12}
-            ruta_docx_generado_paquete = os.path.abspath("plantilla/paquete.docx")
+            numero_hoteles = len(dataHotel)
+            ruta_plantilla_paquete = os.path.abspath(f"plantilla/plantilla_cotizar_paquete_{numero_hoteles}.docx")
+            ruta_docx_generado_paquete = os.path.abspath("plantilla/cotizacion_paquete.docx")
+            shutil.copy(ruta_plantilla_paquete, ruta_docx_generado_paquete)
             docs_eliminar.append(ruta_docx_generado_paquete)
-            adultos = 0
-            ninos = 0
-            habitacion = []
-            dias = Hotel.calcular_dias_noches(dataHotel["check_in"], dataHotel["check_out"])
-            for room in dataHotel["rooms"]:
-                adultos = adultos + int(room["adults"])
-                ninos = ninos + int(room["children"])
-                detalle_habitacion = (f"{room['room_number']} habitacion(es) {room['acomodation']} {room['room_name']} - {room['board_basis']}")
-                habitacion.append(detalle_habitacion)
-            datos = {
-                "adultos": (f"{adultos} adulto(s)"),
-                "ninos": (f"{ninos} niño(s)"),
-                "city": dataHotel["city"],
-                "dias": (f"{dias['dias']} dias y {dias['noches']} noches"),
-                "check_in": dataHotel["check_in"],
-                "check_out": dataHotel["check_out"],
-                "ticket": ticket
-            }
-            log_reemplazar_paquete = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_paquete,ruta_docx_generado_paquete, datos, estilos)
+            estilos = {"fuente": "Helvetica", "numero":12}
+            resultado = {}
+            habitaciones = {}
+            act = {}
+            for index, hotel in enumerate(dataHotel):
+                habitaciones[f"habitacion{index}"] = []
+                act[f"actividades{index}"] = []
+                adultos = 0
+                ninos = 0
+                dias = Hotel.calcular_dias_noches(hotel["check_in"], hotel["check_out"])
+                for room in hotel["rooms"]:
+                    adultos = adultos + (int(room["adults"])*int(room["room_number"]))
+                    ninos = ninos + (int(room["children"])*int(room["room_number"]))
+                    detalle_habitacion = (f"{room['room_number']} habitacion(es) {room['acomodation']} {room['room_name']} - {room['board_basis']}")
+                    habitaciones[f"habitacion{index}"].append(detalle_habitacion)
+                for item in actividades:
+                    if item["codigo"] == hotel["city_code"]:
+                        for tour in item["tours"]:
+                            act[f"actividades{index}"].append(tour["nombre"])
+                        break  # Romper el ciclo si ya se encuentra el id
+                datos = {
+                    f"adultos": (f"{adultos} adulto(s)"),
+                    f"ninos": (f"{ninos} niño(s)"),
+                    f"city{index}": hotel["city"],
+                    f"dias{index}": (f"{dias['dias']} dias y {dias['noches']} noches"),
+                    f"check_in{index}": hotel["check_in"],
+                    f"check_out{index}": hotel["check_out"],
+                    f"ticket{index}": ticket
+                }
+                resultado.update(datos)
+                GenerarPdf.reemplazar_clave_array(ruta_docx_generado_paquete, ruta_docx_generado_paquete, act[f"actividades{index}"], estilos, f"[actividades{index}]")
+                GenerarPdf.reemplazar_clave_array(ruta_docx_generado_paquete, ruta_docx_generado_paquete, habitaciones[f"habitacion{index}"], estilos, f"[habitacion{index}]")
+
+            log_reemplazar_paquete = GenerarPdf.reemplazar_texto_docx(ruta_docx_generado_paquete,ruta_docx_generado_paquete, resultado, estilos)
             if log_reemplazar_paquete:
-                ruta_docx_generado_paquete_habitaciones = os.path.abspath("plantilla/paquete_habitaciones.docx")
-                ruta_docx_generado_paquete_actividades = os.path.abspath("plantilla/paquete_actividades.docx")
-                docs_eliminar.append(ruta_docx_generado_paquete_habitaciones)
-                docs_eliminar.append(ruta_docx_generado_paquete_actividades)
-                log_reemplazar_array_habitacion = GenerarPdf.reemplazar_clave_array(ruta_docx_generado_paquete, ruta_docx_generado_paquete_habitaciones, habitacion, estilos, "[habitacion]")
-                if(log_reemplazar_array_habitacion):
-                    log_reemplazar_array_actividades = GenerarPdf.reemplazar_clave_array(ruta_docx_generado_paquete_habitaciones, ruta_docx_generado_paquete_actividades, actividades, estilos, "[actividades]")
-                    if(log_reemplazar_array_actividades):
-                        ruta_directorio_pdf = os.path.abspath("plantilla")
-                        ruta_pdf_cotizacion_paquete = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_paquete_actividades, ruta_directorio_pdf)
-                        if ruta_pdf_cotizacion_paquete:
-                            log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
-                            if log_eliminar_data:
-                                return {"estado": True, "mensaje": "Documento creado exitosamente", "ruta": ruta_pdf_cotizacion_paquete}    
-                            else:
-                                return {"estado": False, "mensaje": "No se logro crear base64"}    
-                        else:
-                            return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"} 
-                    else:
-                        return {"estado": False, "mensaje": "Error al reemplazar array"}
+                ruta_directorio_pdf = os.path.abspath("plantilla")
+                ruta_pdf_cotizacion_paquete = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_paquete, ruta_directorio_pdf)
+                if ruta_pdf_cotizacion_paquete:
+                    log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
+                    if log_eliminar_data:
+                        return {"estado": True, "mensaje": "Documento creado exitosamente", "ruta": ruta_pdf_cotizacion_paquete} 
                 else:
-                    return {"estado": False, "mensaje": "Error al reemplazar array"}  
+                    return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"}                     
             else:
-                return {"estado": False, "mensaje": "No se logro armar la tabla"} 
+                return {"estado": False, "mensaje": "No se ha podido reemplazar docx"}
         else:
             return {"estado": False, "mensaje": "No hay datos en el body"}
         
@@ -1207,43 +1260,56 @@ class Hotel:
     def generar_pdf_hotel(dataHotel):
         if dataHotel:
             docs_eliminar = []
+            docs_unir = []
             ruta_plantilla_hotel = os.path.abspath("plantilla/plantilla_cotizar_hoteles.docx")
             estilos = {"fuente": "Helvetica", "numero":12}
-            ruta_docx_generado_hotel = os.path.abspath("plantilla/hoteles.docx")
-            docs_eliminar.append(ruta_docx_generado_hotel)
-            facilidades = ", ".join(dataHotel["facilities"]) + "."
-            datos = {
-                "nombre_hotel": dataHotel["hotel_name"],
-                "descripcion": dataHotel["descripcion"],
-                "facilities": facilidades
-            }
-            log_reemplazar_paquete = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_hotel,ruta_docx_generado_hotel, datos, estilos)
-            if log_reemplazar_paquete:
-                ruta_imagen_descargada = os.path.abspath(f"plantilla/imagen_hotel.jpeg")
-                docs_eliminar.append(ruta_imagen_descargada)
-                ruta_imagen = dataHotel["imagen"]
-                log_descargar_imagen = GenerarPdf.download_image(ruta_imagen, ruta_imagen_descargada)
-                if log_descargar_imagen:
-                    log_imagen_docx = GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_hotel, "[imagen_hotel]", alto_en_pt=250)
-                    if log_imagen_docx:
-                        ruta_directorio_pdf = os.path.abspath("plantilla")
-                        ruta_pdf_cotizacion_hotel = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_hotel, ruta_directorio_pdf)
-                        if ruta_pdf_cotizacion_hotel:
-                            log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
-                            if log_eliminar_data:
-                                return {"estado": True, "mensaje": "Documento creado exitosamente", "ruta": ruta_pdf_cotizacion_hotel}    
-                            else:
-                                return {"estado": False, "mensaje": "No se logro crear base64"}    
+            aux = True
+            for index, hotel in enumerate(dataHotel):
+                ruta_docx_generado_hotel = os.path.abspath(f"plantilla/cotizacion_hotel_{index}.docx")
+                facilidades = ", ".join(hotel["facilities"]) + "."
+                datos = {
+                    "nombre_hotel": hotel["hotel_name"],
+                    "descripcion": hotel["descripcion"],
+                    "ciudad_hotel": hotel["city"],
+                    "facilities": facilidades
+                }
+                log_reemplazar_paquete = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_hotel,ruta_docx_generado_hotel, datos, estilos)
+                docs_eliminar.append(ruta_docx_generado_hotel)
+                if log_reemplazar_paquete:
+                    ruta_imagen_descargada = os.path.abspath(f"plantilla/imagen_hotel_{index}.jpeg")
+                    docs_eliminar.append(ruta_imagen_descargada)
+                    ruta_imagen = hotel["imagen"]
+                    log_descargar_imagen = GenerarPdf.download_image(ruta_imagen, ruta_imagen_descargada)
+                    if log_descargar_imagen:
+                        log_imagen_docx = GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_hotel, "[imagen_hotel]", alto_en_pt=250)
+                        if log_imagen_docx:
+                            ruta_directorio_pdf = os.path.abspath("plantilla")
+                            ruta_pdf_cotizacion_hotel = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_hotel, ruta_directorio_pdf)
+                            if ruta_pdf_cotizacion_hotel:
+                                docs_eliminar.append(ruta_pdf_cotizacion_hotel)
+                                docs_unir.append(ruta_pdf_cotizacion_hotel)
                         else:
-                            return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"}
+                            aux = False
+                            return {"estado": False, "mensaje": "No se ha podido añadir imagen a docx"}  
                     else:
-                        return {"estado": False, "mensaje": "No se ha podido añadir imagen a docx"}  
+                        aux = False
+                        return {"estado": False, "mensaje": "No se ha podido descargar la imagen del hotel"} 
                 else:
-                    return {"estado": False, "mensaje": "No se ha podido descargar la imagen del hotel"} 
+                    aux = False
+                    return {"estado": False, "mensaje": "No se ha podido reemplazar texto en plantilla hotel"}
+            if aux:
+                ruta_hoteles_unidos = os.path.abspath("plantilla/hoteles.pdf")
+                log_unir_hoteles = GenerarPdf.unir_pdfs(docs_unir, ruta_hoteles_unidos)
+                if log_unir_hoteles:
+                    log_eliminar_data = GenerarPdf.eliminar_documentos(docs_eliminar)
+                    if log_eliminar_data:
+                        return {"estado": True, "mensaje": "Documento creado exitosamente", "ruta": ruta_hoteles_unidos}    
+                else:
+                    return {"estado": False, "mensaje": "No se logro crear base64"}    
             else:
-                return {"estado": False, "mensaje": "No se logro armar la tabla"} 
+                return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"}
         else:
-            return {"estado": False, "mensaje": "No hay datos en el body"}
+            return {"estado": False, "mensaje": "No hay datos del hotel"}
 
         
     @staticmethod
@@ -1269,33 +1335,36 @@ class Hotel:
 class Actividad:
     @staticmethod
     def generarPdfActividades(dataActividades):
+        # return{"estado": True}
         if dataActividades:
             pdfs_unir = []
             docs_eliminar = []
             aux = True
-            for index, act in enumerate(dataActividades):
-                if act['actividad']['tours']['nombre'] != "Transfer":
-                    ruta_plantilla_actividad = os.path.abspath("plantilla/plantilla_cotizar_actividades.docx")
-                    ruta_docx_generado_actividad = os.path.abspath(f"plantilla/actividad_{index}.docx")
-                    docs_eliminar.append(ruta_docx_generado_actividad)
-                    estilos = {"fuente": "Helvetica", "numero":12}
-                    log_reemplazar_cotitazion = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_actividad, ruta_docx_generado_actividad, act['actividad']['tours'], estilos)
-                    if log_reemplazar_cotitazion:
-                        ruta_imagen_descargada = os.path.abspath(f"plantilla/imagen_actividad_{index}.jpeg")
-                        ruta_imagen = (f"https://cotizador.mvevip.com/img/actividades_internas/{act['actividad']['codigo']}/{act['actividad']['tours']['id']}.jpg")
-                        GenerarPdf.download_image(ruta_imagen, ruta_imagen_descargada)
-                        GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_actividad, "[imagen_actividad]", ancho_en_pt=400)
-                        docs_eliminar.append(ruta_imagen_descargada)
-                        ruta_directorio_pdf = os.path.abspath("plantilla")
-                        ruta_pdf_generado = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_actividad, ruta_directorio_pdf)
-                        if ruta_pdf_generado:
-                            pdfs_unir.append(ruta_pdf_generado)
-                            docs_eliminar.append(ruta_pdf_generado)
-                            aux = True
+            for indice, actividad in enumerate(dataActividades):
+                for index, act in enumerate(actividad["tours"]):
+                    if act['nombre'] != "Transfer":
+                        act["ciudad"] = actividad["ciudad"]
+                        ruta_plantilla_actividad = os.path.abspath("plantilla/plantilla_cotizar_actividades.docx")
+                        ruta_docx_generado_actividad = os.path.abspath(f"plantilla/actividad_{indice}_{index}.docx")
+                        docs_eliminar.append(ruta_docx_generado_actividad)
+                        estilos = {"fuente": "Helvetica", "numero":12}
+                        log_reemplazar_cotitazion = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_actividad, ruta_docx_generado_actividad, act, estilos)
+                        if log_reemplazar_cotitazion:
+                            ruta_imagen_descargada = os.path.abspath(f"plantilla/imagen_actividad_{indice}_{index}.jpeg")
+                            ruta_imagen = (f"https://cotizador.mvevip.com/img/actividades_internas/{actividad['codigo']}/{act['id']}.jpg")
+                            GenerarPdf.download_image(ruta_imagen, ruta_imagen_descargada)
+                            GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_actividad, "[imagen_actividad]", ancho_en_pt=400)
+                            docs_eliminar.append(ruta_imagen_descargada)
+                            ruta_directorio_pdf = os.path.abspath("plantilla")
+                            ruta_pdf_generado = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_actividad, ruta_directorio_pdf)
+                            if ruta_pdf_generado:
+                                pdfs_unir.append(ruta_pdf_generado)
+                                docs_eliminar.append(ruta_pdf_generado)
+                                aux = True
+                            else:
+                                aux = False 
                         else:
                             aux = False 
-                    else:
-                        aux = False 
         if aux is True:
             ruta_pdf = os.path.abspath("plantilla/cotizar_actividades.pdf")
             log_unir = GenerarPdf.unir_pdfs(pdfs_unir, ruta_pdf)
