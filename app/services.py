@@ -163,9 +163,12 @@ class Cotizador:
         else:
             # opcion3
             if "vuelo" in data and data["vuelo"]:
+                personas_lista = data["vuelo"]["personas"].split(',')
+                adultos = personas_lista[0] if len(personas_lista) > 0 else "0 Adultos"
+                ninos = personas_lista[1] if len(personas_lista) > 1 else "0 Niños"
                 personas = {
-                    "adultos": data["vuelo"]["personas"].split(',')[0],
-                    "ninos": data["vuelo"]["personas"].split(',')[1]
+                    "adultos": adultos,
+                    "ninos": ninos
                 }
                 ticket = "Si incluye ticket(s) aéreo(s)"
                 ciudad = "\n".join(item[f"ciudad_destino{index}"].split(",")[0] for index, item in enumerate(data["vuelo"]["segmentos"]) if index < len(data["vuelo"]["segmentos"]) - 1)
