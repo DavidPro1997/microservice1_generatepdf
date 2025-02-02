@@ -17,6 +17,8 @@ from docx.oxml import parse_xml # type: ignore
 from app import app
 from datetime import datetime
 import uuid
+import locale
+locale.setlocale(locale.LC_TIME, "es_ES.utf8")
 
 
 logging.basicConfig(
@@ -163,13 +165,7 @@ class Cotizador:
         else:
             # opcion3
             if "vuelo" in data and data["vuelo"]:
-                personas_lista = data["vuelo"]["personas"].split(',')
-                adultos = personas_lista[0] if len(personas_lista) > 0 else "0 Adultos"
-                ninos = personas_lista[1] if len(personas_lista) > 1 else "0 Niños"
-                personas = {
-                    "adultos": adultos,
-                    "ninos": ninos
-                }
+                personas = {"pasajeros": data["vuelo"]["personas"].replace(",", "\n")}
                 ticket = "Si incluye ticket(s) aéreo(s)"
                 ciudad = "\n".join(item[f"ciudad_destino{index}"].split(",")[0] for index, item in enumerate(data["vuelo"]["segmentos"]) if index < len(data["vuelo"]["segmentos"]) - 1)
                 portada = Cotizador.generarPDFPortada(ciudad, idUnico)
@@ -656,11 +652,16 @@ class GenerarPdf:
     @staticmethod
     def imagen_en_docx(image_path, docx_path, key, ancho_en_pt=None, alto_en_pt=None):
         try:
-            # Cargar el documento DOCX
             doc = Document(docx_path)
 
-            # Abrir la imagen
             image = Image.open(image_path)
+            
+            
+            # if image.mode == 'RGBA':
+            #     # Crear una nueva imagen con fondo blanco
+            #     fondo_blanco = Image.new("RGBA", image.size, (255, 255, 255, 255))  # Fondo blanco (RGBA)
+            #     fondo_blanco.paste(image, (0, 0), image)  # Pegar la imagen original sobre el fondo blanco
+            #     image = fondo_blanco.convert('RGB')
 
             # Calcular el ancho en proporción al alto especificado
             ancho_original, alto_original = image.size
@@ -755,6 +756,27 @@ class GenerarPdf:
             return "Comentario de tarifa:"
         else:
             return palabra
+        
+
+
+    def eliminar_filas_docx(ruta_entrada, ruta_salida, filas_a_eliminar):
+        try:
+            doc = Document(ruta_entrada)
+            tabla = doc.tables[1]
+            num_filas = len(tabla.rows)
+            filas_a_eliminar_validas = [fila_idx for fila_idx in filas_a_eliminar if fila_idx < num_filas]
+            for fila_idx in sorted(filas_a_eliminar_validas, reverse=True):
+                fila = tabla.rows[fila_idx]
+                tbl = tabla._element
+                tbl.remove(fila._element)  # Elimina la fila del XML de la tabla
+            
+            doc.save(ruta_salida)
+            return True
+        
+        except Exception as e:
+            print(f"Error: {e}")
+            return False
+
 
     @staticmethod
     def armar_tabla_vuelos(archivo_entrada, archivo_salida, variable,datos ,estilos):
@@ -1233,10 +1255,12 @@ class Hotel:
                             act[f"actividades{index}"].append(tour["nombre"])
                         break  # Romper el ciclo si ya se encuentra el id
                 if not act[f"actividades{index}"]:  # Verifica si está vacío
-                    act[f"actividades{index}"].append("No incluye actividades")  
+                    act[f"actividades{index}"].append("No incluye actividades") 
+                pax = "" 
+                if adultos>1: pax += (f"{adultos} adulto(s)")
+                if ninos>1: pax += (f"\n{ninos} niños(s)")
                 datos = {
-                    f"adultos": (f"{adultos} adulto(s)"),
-                    f"ninos": (f"{ninos} niño(s)"),
+                    f"pasajeros": pax,
                     f"city{index}": hotel["city"],
                     f"dias{index}": (f"{dias['dias']} dias y {dias['noches']} noches"),
                     f"check_in{index}": hotel["check_in"],
@@ -1303,23 +1327,22 @@ class Hotel:
                 docs_eliminar.append(ruta_docx_generado_hotel)
                 if log_reemplazar_paquete:
                     ruta_imagen_descargada = os.path.abspath(f"plantilla/imagen_hotel_{index}_{idUnico}.jpeg")
-                    docs_eliminar.append(ruta_imagen_descargada)
                     ruta_imagen = hotel["imagen"]
                     log_descargar_imagen = GenerarPdf.download_image(ruta_imagen, ruta_imagen_descargada)
-                    if log_descargar_imagen:
-                        log_imagen_docx = GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_hotel, "[imagen_hotel]", alto_en_pt=250)
-                        if log_imagen_docx:
-                            ruta_directorio_pdf = os.path.abspath("plantilla")
-                            ruta_pdf_cotizacion_hotel = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_hotel, ruta_directorio_pdf)
-                            if ruta_pdf_cotizacion_hotel:
-                                docs_eliminar.append(ruta_pdf_cotizacion_hotel)
-                                docs_unir.append(ruta_pdf_cotizacion_hotel)
-                        else:
-                            aux = False
-                            return {"estado": False, "mensaje": "No se ha podido añadir imagen a docx"}  
+                    if not log_descargar_imagen:
+                        ruta_imagen_descargada = os.path.abspath(f"img/mkv.jpg")
+                    else:
+                        docs_eliminar.append(ruta_imagen_descargada)
+                    log_imagen_docx = GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_hotel, "[imagen_hotel]", alto_en_pt=250)
+                    if log_imagen_docx:
+                        ruta_directorio_pdf = os.path.abspath("plantilla")
+                        ruta_pdf_cotizacion_hotel = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_hotel, ruta_directorio_pdf)
+                        if ruta_pdf_cotizacion_hotel:
+                            docs_eliminar.append(ruta_pdf_cotizacion_hotel)
+                            docs_unir.append(ruta_pdf_cotizacion_hotel)
                     else:
                         aux = False
-                        return {"estado": False, "mensaje": "No se ha podido descargar la imagen del hotel"} 
+                        return {"estado": False, "mensaje": "No se ha podido añadir imagen a docx"}  
                 else:
                     aux = False
                     return {"estado": False, "mensaje": "No se ha podido reemplazar texto en plantilla hotel"}
@@ -1381,9 +1404,12 @@ class Actividad:
                         if log_reemplazar_cotitazion:
                             ruta_imagen_descargada = os.path.abspath(f"plantilla/imagen_actividad_{indice}_{index}_{idUnico}.jpeg")
                             ruta_imagen = (f"https://cotizador.mvevip.com/img/actividades_internas/{actividad['codigo']}/{act['id']}.jpg")
-                            GenerarPdf.download_image(ruta_imagen, ruta_imagen_descargada)
+                            log_download = GenerarPdf.download_image(ruta_imagen, ruta_imagen_descargada)
+                            if not log_download:
+                                ruta_imagen_descargada = os.path.abspath(f"img/mkv.jpg")
+                            else:
+                                docs_eliminar.append(ruta_imagen_descargada)
                             GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_actividad, "[imagen_actividad]", ancho_en_pt=400)
-                            docs_eliminar.append(ruta_imagen_descargada)
                             ruta_directorio_pdf = os.path.abspath("plantilla")
                             ruta_pdf_generado = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_actividad, ruta_directorio_pdf)
                             if ruta_pdf_generado:
@@ -1414,27 +1440,70 @@ class Costos:
     def generarPdfCostos(dataCostos, incluye, idUnico):
         if dataCostos:
             docs_eliminar = []
+            filas = []
             incluye_paquete = ", ".join(incluye) + "."
+            datos = {
+                "fecha": datetime.now().strftime("%d de %B de %Y a las %H:%M horas"),
+                "incluye": incluye_paquete,
+            }
             if dataCostos["tipo"] == "0":
                 ruta_plantilla_costos_original = os.path.abspath("plantilla/plantilla_cotizar_costos_detallado.docx")
-                datos = {
-                    "incluye": incluye_paquete,
-                    "numA": dataCostos["detallado"]["adultos"]["numero"],
-                    "numN": dataCostos["detallado"]["ninos"]["numero"],
-                    "total": round(float(dataCostos["detallado"]["total"]), 2),
-                    "precioAdulto": round(float(dataCostos["detallado"]["adultos"]["precio"]), 2),
-                    "precioNino": round(float(dataCostos["detallado"]["ninos"]["precio"]), 2),
-                    "precioAdulto_u": round(float(dataCostos["detallado"]["adultos"]["precio"]) / float(dataCostos["detallado"]["adultos"]["numero"]), 2) if float(dataCostos["detallado"]["adultos"]["numero"]) > 0 else 0,
-                    "precioNino_u": round(float(dataCostos["detallado"]["ninos"]["precio"]) / float(dataCostos["detallado"]["ninos"]["numero"]), 2) if float(dataCostos["detallado"]["ninos"]["numero"]) > 0 else 0
-                }
+                if dataCostos["detallado"]["adultos"]["numero"]>0:
+                    data = {
+                        "numA": dataCostos["detallado"]["adultos"]["numero"],
+                        "precioAdulto_u": round(float(dataCostos["detallado"]["adultos"]["precio"]) / float(dataCostos["detallado"]["adultos"]["numero"]), 2) if float(dataCostos["detallado"]["adultos"]["numero"]) > 0 else 0,
+                        "precioAdulto": round(float(dataCostos["detallado"]["adultos"]["precio"]), 2),
+                    }
+                    datos.update(data)
+                else:
+                    filas.append(1)
+                if dataCostos["detallado"]["ninos"]["numero"]>0:
+                    data = {
+                        "numN": dataCostos["detallado"]["ninos"]["numero"],
+                        "precioNino_u": round(float(dataCostos["detallado"]["ninos"]["precio"]) / float(dataCostos["detallado"]["ninos"]["numero"]), 2) if float(dataCostos["detallado"]["ninos"]["numero"]) > 0 else 0,
+                        "precioNino": round(float(dataCostos["detallado"]["ninos"]["precio"]), 2),
+                    }
+                    datos.update(data)
+                else:
+                    filas.append(2)
+                if dataCostos["detallado"]["infantes"]["numero"]>0:
+                    data = {
+                        "numI": dataCostos["detallado"]["infantes"]["numero"],
+                        "precioInf_u": round(float(dataCostos["detallado"]["infantes"]["precio"]) / float(dataCostos["detallado"]["infantes"]["numero"]), 2) if float(dataCostos["detallado"]["infantes"]["numero"]) > 0 else 0,
+                        "precioInf": round(float(dataCostos["detallado"]["infantes"]["precio"]), 2),
+                    }
+                    datos.update(data)
+                else:
+                    filas.append(3)
+                if dataCostos["detallado"]["terceraEdad"]["numero"]>0:
+                    data = {
+                        "numT": dataCostos["detallado"]["terceraEdad"]["numero"],
+                        "precioTer_u": round(float(dataCostos["detallado"]["terceraEdad"]["precio"]) / float(dataCostos["detallado"]["terceraEdad"]["numero"]), 2) if float(dataCostos["detallado"]["terceraEdad"]["numero"]) > 0 else 0,
+                        "precioTer": round(float(dataCostos["detallado"]["terceraEdad"]["precio"]), 2),
+                    }
+                    datos.update(data)
+                else:
+                    filas.append(4)
+                if dataCostos["detallado"]["discapacitados"]["numero"]>0:
+                    data = {
+                        "numD": dataCostos["detallado"]["discapacitados"]["numero"],
+                        "precioDis_u": round(float(dataCostos["detallado"]["discapacitados"]["precio"]) / float(dataCostos["detallado"]["discapacitados"]["numero"]), 2) if float(dataCostos["detallado"]["discapacitados"]["numero"]) > 0 else 0,
+                        "precioDis": round(float(dataCostos["detallado"]["discapacitados"]["precio"]), 2),
+                    }
+                    datos.update(data)
+                else:
+                    filas.append(5)
+                data = {"total": round(dataCostos["detallado"]["total"] , 2)}
+                datos.update(data)
+
             elif dataCostos["tipo"] == "1":
                 ruta_plantilla_costos_original = os.path.abspath("plantilla/plantilla_cotizar_costos_no_detallado.docx")
-                datos = {
-                    "incluye": incluye_paquete,
+                data = {
                     "paquete": round(float(dataCostos["noDetallado"]["paquete"]),2),
                     "vuelo": round(float(dataCostos["noDetallado"]["vuelo"]),2),
                     "total": round(float(dataCostos["noDetallado"]["paquete"]) + float(dataCostos["noDetallado"]["vuelo"]), 2)
                 }
+                datos.update(data)
             else:
                 return {"estado": False, "mensaje": "No se logro identificar el tipo de costos"}
             
@@ -1444,6 +1513,10 @@ class Costos:
             docs_eliminar.append(ruta_plantilla_costos)
             docs_eliminar.append(ruta_docx_generado_costos)
             estilos = {"fuente": "Helvetica", "numero":12}
+            if len(filas) > 0:
+                log_tabla_emiminar_fila = GenerarPdf.eliminar_filas_docx(ruta_plantilla_costos,ruta_plantilla_costos,filas)
+                if not log_tabla_emiminar_fila:
+                    return {"estado": False, "mensaje": "No se logro eliminar las filas de costos"} 
             log_reemplazar_cotitazion = GenerarPdf.reemplazar_texto_docx(ruta_plantilla_costos, ruta_docx_generado_costos, datos, estilos)
             if log_reemplazar_cotitazion:
                 ruta_directorio_pdf = os.path.abspath("plantilla")
