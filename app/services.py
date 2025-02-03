@@ -1257,8 +1257,8 @@ class Hotel:
                 if not act[f"actividades{index}"]:  # Verifica si está vacío
                     act[f"actividades{index}"].append("No incluye actividades") 
                 pax = "" 
-                if adultos>1: pax += (f"{adultos} adulto(s)")
-                if ninos>1: pax += (f"\n{ninos} niños(s)")
+                if adultos>=1: pax += (f"{adultos} adulto(s)")
+                if ninos>=1: pax += (f"\n{ninos} niños(s)")
                 datos = {
                     f"pasajeros": pax,
                     f"city{index}": hotel["city"],
