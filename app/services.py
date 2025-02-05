@@ -665,6 +665,9 @@ class GenerarPdf:
 
             # Calcular el ancho en proporción al alto especificado
             ancho_original, alto_original = image.size
+            if ancho_original > 600:
+                ancho_en_pt = 600
+                alto_en_pt = None
             
             if ancho_en_pt is not None and alto_en_pt is None:
                 # Si solo se proporciona el ancho, calcular el alto manteniendo la proporción
