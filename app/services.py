@@ -655,19 +655,9 @@ class GenerarPdf:
             doc = Document(docx_path)
 
             image = Image.open(image_path)
-            
-            
-            # if image.mode == 'RGBA':
-            #     # Crear una nueva imagen con fondo blanco
-            #     fondo_blanco = Image.new("RGBA", image.size, (255, 255, 255, 255))  # Fondo blanco (RGBA)
-            #     fondo_blanco.paste(image, (0, 0), image)  # Pegar la imagen original sobre el fondo blanco
-            #     image = fondo_blanco.convert('RGB')
 
             # Calcular el ancho en proporción al alto especificado
             ancho_original, alto_original = image.size
-            if ancho_original > 600:
-                ancho_en_pt = 600
-                alto_en_pt = None
             
             if ancho_en_pt is not None and alto_en_pt is None:
                 # Si solo se proporciona el ancho, calcular el alto manteniendo la proporción
@@ -680,6 +670,10 @@ class GenerarPdf:
             else:
                 return False
 
+            if ancho_en_pt > 450:
+                ancho_en_pt = 450
+                proporción = ancho_en_pt / ancho_original
+                alto_en_pt = int(alto_original * proporción)
 
             extension = os.path.splitext(image_path)[1].lower()
             if extension == '.png':
