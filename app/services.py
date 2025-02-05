@@ -670,8 +670,8 @@ class GenerarPdf:
             else:
                 return False
 
-            if ancho_en_pt > 450:
-                ancho_en_pt = 450
+            if ancho_en_pt > 400:
+                ancho_en_pt = 400
                 proporción = ancho_en_pt / ancho_original
                 alto_en_pt = int(alto_original * proporción)
 
