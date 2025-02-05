@@ -100,7 +100,7 @@ class Cotizador:
         docs_eliminar = []
         incluye = []
         if "hotel" in data and data["hotel"]:
-            ciudad = "\n".join(item["city"] for item in data["hotel"])
+            ciudad = "\n".join(set(item["city"] for item in data["hotel"]))
             # opcion1
             if "vuelo" in data and data["vuelo"]:
                 ticket = "Si incluye ticket aéreo"
@@ -1333,7 +1333,7 @@ class Hotel:
                         ruta_imagen_descargada = os.path.abspath(f"img/mkv.jpg")
                     else:
                         docs_eliminar.append(ruta_imagen_descargada)
-                    log_imagen_docx = GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_hotel, "[imagen_hotel]", alto_en_pt=250)
+                    log_imagen_docx = GenerarPdf.imagen_en_docx(ruta_imagen_descargada, ruta_docx_generado_hotel, "[imagen_hotel]", alto_en_pt=230)
                     if log_imagen_docx:
                         ruta_directorio_pdf = os.path.abspath("plantilla")
                         ruta_pdf_cotizacion_hotel = GenerarPdf.convertir_docx_a_pdf(ruta_docx_generado_hotel, ruta_directorio_pdf)
