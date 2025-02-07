@@ -1257,7 +1257,7 @@ class Hotel:
                 if adultos>=1: pax += (f"{adultos} adulto(s)")
                 if ninos>=1: pax += (f"\n{ninos} niños(s)")
                 datos = {
-                    f"pasajeros": pax,
+                    f"pasajeros{index}": pax,
                     f"city{index}": hotel["city"],
                     f"dias{index}": (f"{dias['dias']} dias y {dias['noches']} noches"),
                     f"check_in{index}": hotel["check_in"],
