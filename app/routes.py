@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from app.services import Switch
+from app.services.switch import Switch
 # from flask_cors import CORS
 
 app = Flask(__name__)

@@ -5,6 +5,7 @@ plantilla/voucher.pdf
 plantilla/vuelos.jpg
 plantilla/recibo*
 plantilla/*.pdf
+app/config.py
 venv/
 logs/
 app/__pycache__/*.pyc
