@@ -9,14 +9,19 @@ log_file = os.path.abspath("logs/output.log")
 # Crear un manejador que rote los logs después de alcanzar un tamaño límite (por ejemplo, 5MB)
 log_handler = RotatingFileHandler(log_file, maxBytes=5*1024*1024, backupCount=3)  # 5MB, mantener 3 archivos antiguos
 
+# Crear un manejador para la consola
+console_handler = logging.StreamHandler(sys.stdout)  # Imprime en consola
+
 # Configurar el formato del log
 log_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 log_handler.setFormatter(log_formatter)
+console_handler.setFormatter(log_formatter)
 
 # Configurar el logger
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)  # Establece el nivel de logging
-logger.addHandler(log_handler)
+logger.addHandler(log_handler)  # Agrega el manejador de archivo
+logger.addHandler(console_handler)  # Agrega el manejador de consola
 
 # Redirigir stdout y stderr a logging
 class LoggerWriter:

@@ -222,20 +222,14 @@ class Hotel:
         docs_eliminar = []
         if dataHotel:
             numero_hoteles = len(dataHotel)
-            if numero_hoteles <= 2:
-                estilos = {"fuente": "Helvetica", "numero":12}
-            elif numero_hoteles == 3:
-                estilos = {"fuente": "Helvetica", "numero":9}
-            elif numero_hoteles == 4:
-                estilos = {"fuente": "Helvetica", "numero":7}
-            else:
-                return {"estado": False, "mensaje": "Ha excedido el numero de hoteles"}
-            ruta_plantilla_paquete = os.path.abspath(f"plantilla/cotizaciones/plantilla_cotizar_paquete_{numero_hoteles}.docx")
-            ruta_docx_generado_paquete = os.path.abspath(f"plantilla/cotizaciones/temp/cotizacion_paquete_{idUnico}.docx")
-            shutil.copy(ruta_plantilla_paquete, ruta_docx_generado_paquete)
-            docs_eliminar.append(ruta_docx_generado_paquete)
+            estilos = {"fuente": "Helvetica", "numero":12}
+            ruta_plantilla_paquete = os.path.abspath(f"plantilla/cotizaciones/plantilla_cotizar_paquete_1.docx")
             resultado = {}
+            hoteles_unir = []
             for index, hotel in enumerate(dataHotel):
+                ruta_docx_generado_paquete = os.path.abspath(f"plantilla/cotizaciones/temp/cotizacion_paquete_{index}_{idUnico}.docx")
+                shutil.copy(ruta_plantilla_paquete, ruta_docx_generado_paquete)
+                docs_eliminar.append(ruta_docx_generado_paquete)
                 role = (f"Eres un extractor de información. Devuelve solo las instalaciones y servicios de un hotel en formato JSON, sin explicaciones adicionales.")
                 mensaje = (f"Texto del hotel: {hotel['descripcion']}. Devuelve las facilities en array de un solo nievel, con la primera letra en mayusculas, llamado instalaciones_y_servicios, si no encuentras devuelve vacio. Si encuentas muchas facilities saca solo las 15 mas relevantes.")
                 facilities = Api.open_ai(role, mensaje)
@@ -269,15 +263,28 @@ class Hotel:
                 if ninos>=1: pax += (f"\n{ninos} niños(s)")
                 detalle = (f"•  {dias['dias']} dias y {dias['noches']} noches\n•  Check-in: {hotel['check_in']}\n•  Check-out: {hotel['check_out']}")
                 datos = {
-                    f"pasajeros{index}": pax,
-                    f"city{index}": (f"•  {hotel['city']}"),
-                    f"detalle{index}": detalle,
-                    f"ticket{index}": (f"•  {ticket}"),
-                    f"actividades{index}": act,
-                    f"habitacion{index}": habitaciones,
-                    f"facilities{index}": facilities_text
+                    f"pasajeros0": pax,
+                    f"city0": (f"•  {hotel['city']}\n•  {hotel['hotel_name']}"),
+                    f"detalle0": detalle,
+                    f"ticket0": (f"•  {ticket}"),
+                    f"actividades0": act,
+                    f"habitacion0": habitaciones,
+                    f"facilities0": facilities_text
                 }
-                resultado.update(datos)
+                # resultado.update(datos)
+                log_reemplazar_paquete = Docx.reemplazar_texto_tablas(ruta_docx_generado_paquete,ruta_docx_generado_paquete, datos, estilos)
+                if log_reemplazar_paquete:
+                    ruta_directorio_pdf = os.path.abspath("plantilla/cotizaciones/temp")
+                    ruta_pdf_cotizacion_paquete = Pdf.convertir_docx_a_pdf(ruta_docx_generado_paquete, ruta_directorio_pdf)
+                    if ruta_pdf_cotizacion_paquete:
+                        hoteles_unir.append(ruta_pdf_cotizacion_paquete)
+                        docs_eliminar.append(ruta_pdf_cotizacion_paquete)
+
+            ruta_pdf = os.path.abspath(f"plantilla/cotizaciones/temp/paquete_{idUnico}.pdf")
+            log_unir_paquetes = Pdf.unir_pdfs(hoteles_unir, ruta_pdf)
+            if log_unir_paquetes:
+                return {"estado": True, "mensaje": "Documento creado exitosamente", "ruta": ruta_pdf} 
+            return {"estado": False, "mensaje": "No se ha podido unir los pdfs de los paquetes"}  
         else:
             ruta_plantilla_paquete = os.path.abspath(f"plantilla/cotizaciones/plantilla_cotizar_paquete_0.docx")
             ruta_docx_generado_paquete = os.path.abspath(f"plantilla/cotizaciones/temp/cotizacion_paquete_{idUnico}.docx")
@@ -295,21 +302,20 @@ class Hotel:
                 "actividades": act
             }
             resultado.update(personas)
-        log_reemplazar_paquete = Docx.reemplazar_texto_tablas(ruta_docx_generado_paquete,ruta_docx_generado_paquete, resultado, estilos)
-        if log_reemplazar_paquete:
-            ruta_directorio_pdf = os.path.abspath("plantilla/cotizaciones/temp")
-            ruta_pdf_cotizacion_paquete = Pdf.convertir_docx_a_pdf(ruta_docx_generado_paquete, ruta_directorio_pdf)
-            if ruta_pdf_cotizacion_paquete:
-                log_eliminar_data = Archivos.eliminar_documentos(docs_eliminar)
-                if log_eliminar_data:
-                    return {"estado": True, "mensaje": "Documento creado exitosamente", "ruta": ruta_pdf_cotizacion_paquete} 
+            log_reemplazar_paquete = Docx.reemplazar_texto_tablas(ruta_docx_generado_paquete,ruta_docx_generado_paquete, resultado, estilos)
+            if log_reemplazar_paquete:
+                ruta_directorio_pdf = os.path.abspath("plantilla/cotizaciones/temp")
+                ruta_pdf_cotizacion_paquete = Pdf.convertir_docx_a_pdf(ruta_docx_generado_paquete, ruta_directorio_pdf)
+                if ruta_pdf_cotizacion_paquete:
+                    log_eliminar_data = Archivos.eliminar_documentos(docs_eliminar)
+                    if log_eliminar_data:
+                        return {"estado": True, "mensaje": "Documento creado exitosamente", "ruta": ruta_pdf_cotizacion_paquete} 
+                else:
+                    return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"}                     
             else:
-                return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"}                     
-        else:
-            return {"estado": False, "mensaje": "No se ha podido reemplazar docx"}
+                return {"estado": False, "mensaje": "No se ha podido reemplazar docx"}
 
             
-        
 
     @staticmethod
     def generar_pdf_hotel(dataHotel, idUnico):
@@ -327,7 +333,7 @@ class Hotel:
                 facilidades = ", ".join(hotel["facilities"]) + "."
                 datos = {
                     "nombre_hotel": hotel["hotel_name"],
-                    "descripcion": Archivos.truncar_texto(hotel["descripcion"],175),
+                    "descripcion": Archivos.truncar_texto(hotel["descripcion"],150),
                     "ciudad_hotel": hotel["city"],
                     "facilities": facilidades
                 }
