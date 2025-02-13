@@ -1,14 +1,22 @@
 import logging
 import os
 import sys
+from logging.handlers import RotatingFileHandler
 
-# Configurar logging
+# Configuración de la ruta del archivo de log
 log_file = os.path.abspath("logs/output.log")
-logging.basicConfig(
-    filename=log_file, 
-    level=logging.DEBUG,  
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+
+# Crear un manejador que rote los logs después de alcanzar un tamaño límite (por ejemplo, 5MB)
+log_handler = RotatingFileHandler(log_file, maxBytes=5*1024*1024, backupCount=3)  # 5MB, mantener 3 archivos antiguos
+
+# Configurar el formato del log
+log_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+log_handler.setFormatter(log_formatter)
+
+# Configurar el logger
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)  # Establece el nivel de logging
+logger.addHandler(log_handler)
 
 # Redirigir stdout y stderr a logging
 class LoggerWriter:
