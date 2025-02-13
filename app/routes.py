@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 from app.services.switch import Switch
+import app.logger_config  
 # from flask_cors import CORS
 
 app = Flask(__name__)
@@ -9,6 +10,8 @@ app = Flask(__name__)
 #      supports_credentials=True, 
 #      allow_headers=["Content-Type", "Authorization"],
 #      methods=["POST", "OPTIONS", "GET", "DELETE"])
+
+
 
 
 @app.route('/')

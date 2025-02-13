@@ -1,6 +1,7 @@
 import os, shutil
 import locale
 from app.services.comun import Archivos, Pdf, Docx, Imagen, Api  
+import app.logger_config 
 
 locale.setlocale(locale.LC_TIME, "es_ES.utf8")
 

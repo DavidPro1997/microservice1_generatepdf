@@ -1,6 +1,7 @@
 import os
 from PIL import Image # type: ignore
 from app.services.comun import Imagen 
+import app.logger_config 
 
 
 class Img:

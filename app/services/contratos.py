@@ -1,6 +1,7 @@
 import os
 import logging
 from app.services.comun import Archivos, Pdf, Docx, Imagen  
+import app.logger_config 
 
 
 class Verificacion:

@@ -16,6 +16,7 @@ from reportlab.pdfgen import canvas # type: ignore
 from docx.oxml.ns import nsdecls # type: ignore
 from docx.oxml import parse_xml # type: ignore
 import openai #type: ignore
+import app.logger_config 
 
 
 class Docx:

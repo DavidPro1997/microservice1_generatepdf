@@ -1,5 +1,6 @@
 import os
 from app.services.comun import Archivos, Pdf, Docx  
+import app.logger_config 
 
 
 class Hotel:
