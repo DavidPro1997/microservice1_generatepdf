@@ -8,13 +8,14 @@ import sys, platform
 import base64
 import re
 import logging, json, shutil
+import fitz #type: ignore
 from PyPDF2 import PdfMerger, PdfReader, PdfWriter # type: ignore
 from io import BytesIO
 from app.config import Config
 from PIL import Image, ImageDraw, ImageFont # type: ignore
 from reportlab.pdfgen import canvas # type: ignore
-from docx.oxml.ns import nsdecls # type: ignore
-from docx.oxml import parse_xml # type: ignore
+from docx.oxml.ns import nsdecls,qn # type: ignore
+from docx.oxml import parse_xml, OxmlElement # type: ignore
 import openai #type: ignore
 import app.logger_config 
 
@@ -110,6 +111,12 @@ class Docx:
     @staticmethod
     def reemplazar_texto_tablas(archivo_entrada, archivo_salida, variables, estilos, alineacion="JUSTIFY"):
         try:
+            alineaciones = {
+                "LEFT": WD_PARAGRAPH_ALIGNMENT.LEFT,
+                "CENTER": WD_PARAGRAPH_ALIGNMENT.CENTER,
+                "RIGHT": WD_PARAGRAPH_ALIGNMENT.RIGHT,
+                "JUSTIFY": WD_PARAGRAPH_ALIGNMENT.JUSTIFY
+            }
             # Cargar el documento
             doc = Document(archivo_entrada)
 
@@ -125,6 +132,8 @@ class Docx:
                                 if marcador in para.text:
                                     para.text = para.text.replace(marcador, str(valor))
                                     Docx.aplicar_estilos_tablas(para, estilos)
+                                    para.alignment = alineaciones.get(alineacion.upper(), WD_PARAGRAPH_ALIGNMENT.JUSTIFY)
+                                    
 
             # Guardar el documento modificado
             doc.save(archivo_salida)
@@ -133,6 +142,54 @@ class Docx:
             logging.error(f"Error: {e}")
             print(f"Error: {e}")  # Imprime el error si ocurre
             return False  # En caso de error, devolver False
+
+
+    @staticmethod
+    def reemplazar_texto_tabla_anidada(archivo_entrada, archivo_salida, variables, estilos, numero_tabla, numero_fila, numero_celda, alineacion="JUSTIFY"):
+        try:
+            alineaciones = {
+                "LEFT": WD_PARAGRAPH_ALIGNMENT.LEFT,
+                "CENTER": WD_PARAGRAPH_ALIGNMENT.CENTER,
+                "RIGHT": WD_PARAGRAPH_ALIGNMENT.RIGHT,
+                "JUSTIFY": WD_PARAGRAPH_ALIGNMENT.JUSTIFY
+            }
+
+            # Cargar el documento
+            doc = Document(archivo_entrada)
+
+            # Acceder a la primera tabla
+            if not doc.tables:
+                print("No hay tablas en el documento.")
+                return False
+            
+            tabla_principal = doc.tables[numero_tabla]  # Primera tabla
+
+            # Verificar si hay una tabla dentro de la primera celda de la primera fila
+            if not tabla_principal.rows[numero_fila].cells[numero_celda].tables:
+                print("No hay una tabla anidada en la primera celda de la primera fila.")
+                return False
+            
+            tabla_anidada = tabla_principal.rows[numero_fila].cells[numero_celda].tables[0]  # Primera tabla dentro de la primera tabla
+
+            # Reemplazar texto en la tabla anidada
+            for fila in tabla_anidada.rows:
+                for celda in fila.cells:
+                    for para in celda.paragraphs:
+                        for var, valor in variables.items():
+                            marcador = f"[{var}]"
+                            if marcador in para.text:
+                                para.text = para.text.replace(marcador, str(valor))
+                                Docx.aplicar_estilos_tablas(para, estilos)
+                                para.alignment = alineaciones.get(alineacion.upper(), WD_PARAGRAPH_ALIGNMENT.JUSTIFY)
+
+            # Guardar el documento modificado
+            doc.save(archivo_salida)
+            return True
+
+        except Exception as e:
+            print(f"Error: {e}")
+            return False  # En caso de error, devolver False
+
 
     @staticmethod
     def aplicar_estilos_tablas(para, estilos):
@@ -354,6 +411,8 @@ class Docx:
                                 cell.paragraphs[0].alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
                             elif alineacion == "RIGTH":
                                 cell.paragraphs[0].alignment = WD_PARAGRAPH_ALIGNMENT.RIGTH  # Centrar el párrafo
+                            elif alineacion == "LEFT":
+                                cell.paragraphs[0].alignment = WD_PARAGRAPH_ALIGNMENT.LEFT  # Centrar el párrafo
                             break
             
             # Buscar la clave en los párrafos normales si no está en una tabla
@@ -372,6 +431,8 @@ class Docx:
                             new_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.JUSTIFY
                         elif alineacion == "RIGHT":
                             new_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.RIGHT  # Centrar el párrafo
+                        elif alineacion == "LEFT":
+                            new_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.LEFT  # Centrar el párrafo
                         # new_paragraph.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER  # Centrar el párrafo
                         run = new_paragraph.add_run()
                         # run = cell.paragraphs[0].add_run()
@@ -388,10 +449,13 @@ class Docx:
             return False
 
     @staticmethod
-    def eliminar_filas_docx(ruta_entrada, ruta_salida, filas_a_eliminar):
+    def eliminar_filas_docx(ruta_entrada, ruta_salida, filas_a_eliminar, numero_tabla, numero_fila = None, numero_celda = None, numero_tabla_anidada = None):
         try:
             doc = Document(ruta_entrada)
-            tabla = doc.tables[1]
+            if numero_fila is not None and numero_celda is not None and numero_tabla_anidada is not None:
+                tabla  = doc.tables[numero_tabla].rows[numero_fila].cells[numero_celda].tables[numero_tabla_anidada]
+            else:
+                tabla = doc.tables[numero_tabla]
             num_filas = len(tabla.rows)
             filas_a_eliminar_validas = [fila_idx for fila_idx in filas_a_eliminar if fila_idx < num_filas]
             for fila_idx in sorted(filas_a_eliminar_validas, reverse=True):
@@ -508,6 +572,107 @@ class Docx:
             return "Comentario de tarifa:"
         else:
             return palabra
+
+    @staticmethod
+    def reemplazar_con_hipervinculo(archivo_entrada, archivo_salida, variable, url, texto, estilos, alineacion="JUSTIFY"):
+        """
+        Reemplaza la palabra clave en un documento Word con un hipervínculo formateado,
+        buscando en párrafos normales y dentro de tablas.
+
+        :param archivo_entrada: Ruta del archivo Word de entrada.
+        :param archivo_salida: Ruta del archivo Word de salida.
+        :param variable: Palabra clave a reemplazar.
+        :param url: URL del hipervínculo.
+        :param texto: Texto visible del enlace.
+        :param estilos: Diccionario con "fuente", "numero" (tamaño), "color" (hex).
+        :param alineacion: Alineación del párrafo ("JUSTIFY", "CENTER", "LEFT", "RIGHT").
+        :return: True si tuvo éxito, False si ocurrió un error.
+        """
+        try:
+            doc = Document(archivo_entrada)
+            reemplazado = False
+
+            def procesar_parrafo(para):
+                """ Busca la variable en un párrafo y la reemplaza con el hipervínculo """
+                if variable in para.text:
+                    # Eliminar el texto original
+                    para.clear()
+
+                    # Aplicar alineación
+                    alineaciones = {
+                        "JUSTIFY": WD_PARAGRAPH_ALIGNMENT.JUSTIFY,
+                        "CENTER": WD_PARAGRAPH_ALIGNMENT.CENTER,
+                        "LEFT": WD_PARAGRAPH_ALIGNMENT.LEFT,
+                        "RIGHT": WD_PARAGRAPH_ALIGNMENT.RIGHT
+                    }
+                    para.alignment = alineaciones.get(alineacion.upper(), WD_PARAGRAPH_ALIGNMENT.JUSTIFY)
+
+                    # Crear el hipervínculo
+                    hyperlink = OxmlElement("w:hyperlink")
+
+                    run = OxmlElement("w:r")
+                    rPr = OxmlElement("w:rPr")
+
+                    # Aplicar fuente y tamaño
+                    if "fuente" in estilos:
+                        rFonts = OxmlElement("w:rFonts")
+                        rFonts.set(qn("w:ascii"), estilos["fuente"])
+                        rPr.append(rFonts)
+                    if "numero" in estilos:
+                        sz = OxmlElement("w:sz")
+                        sz.set(qn("w:val"), str(int(estilos["numero"]) * 2))  # Word usa media-puntos
+                        rPr.append(sz)
+
+                    # Aplicar color
+                    if "color" in estilos:
+                        color = OxmlElement("w:color")
+                        color.set(qn("w:val"), estilos["color"].replace("#", ""))
+                        rPr.append(color)
+
+                    # Aplicar subrayado
+                    u = OxmlElement("w:u")
+                    u.set(qn("w:val"), "single")  # "single" para subrayado simple
+                    rPr.append(u)
+
+                    run.append(rPr)
+
+                    text_elem = OxmlElement("w:t")
+                    text_elem.text = texto
+                    run.append(text_elem)
+                    hyperlink.append(run)
+
+                    # Relacionar con la URL
+                    part = para._parent.part
+                    r_id = part.relate_to(url, "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink", is_external=True)
+                    hyperlink.set(qn("r:id"), r_id)
+
+                    para._element.append(hyperlink)
+                    return True
+
+                return False
+
+            # Buscar en párrafos normales
+            for para in doc.paragraphs:
+                if procesar_parrafo(para):
+                    reemplazado = True
+
+            # Buscar en tablas
+            for tabla in doc.tables:
+                for fila in tabla.rows:
+                    for celda in fila.cells:
+                        for para in celda.paragraphs:
+                            if procesar_parrafo(para):
+                                reemplazado = True
+
+            if reemplazado:
+                doc.save(archivo_salida)
+                return True
+            else:
+                return False
+
+        except Exception as e:
+            print(f"Error al procesar el documento: {e}")
+            return False
 
 
 
@@ -669,45 +834,26 @@ class Imagen:
     @staticmethod
     def resize_and_crop(image_path, width_pt=None, height_pt=None, output_path="output.png"):
         try:
-            # 1. Cargar la imagen
-            image = Image.open(image_path)
+            with Image.open(image_path) as img:
+                orig_width, orig_height = img.size
 
-            # 2. Usar tamaño original si no se especifica
-            original_width, original_height = image.size
-            width_pt = width_pt if width_pt is not None else original_width / 1.33
-            height_pt = height_pt if height_pt is not None else original_height / 1.33
+                if width_pt:
+                    new_height = int((width_pt / orig_width) * orig_height)
+                    new_size = (width_pt, new_height)
+                elif height_pt:
+                    new_width = int((height_pt / orig_height) * orig_width)
+                    new_size = (new_width, height_pt)
+                else:
+                    return False  # Si no se pasa width_pt ni height_pt, retorna False
 
-            # 3. Convertir de puntos (pt) a píxeles (1 pt ≈ 1.33 px)
-            width_px = int(width_pt * 1.33)
-            height_px = int(height_pt * 1.33)
+                resized_img = img.resize(new_size, Image.LANCZOS)
+                resized_img.save(output_path)
+                return True  # Operación exitosa
 
-            # 4. Redimensionar sin perder calidad (manteniendo proporciones)
-            img_ratio = original_width / original_height
-            target_ratio = width_px / height_px
-
-            if img_ratio > target_ratio:
-                new_height = height_px
-                new_width = int(height_px * img_ratio)
-            else:
-                new_width = width_px
-                new_height = int(width_px / img_ratio)
-
-            resized_image = image.resize((new_width, new_height), Image.LANCZOS)
-
-            # 5. Recortar la imagen para ajustar al tamaño exacto
-            left = (new_width - width_px) / 2
-            top = (new_height - height_px) / 2
-            right = left + width_px
-            bottom = top + height_px
-            cropped_image = resized_image.crop((left, top, right, bottom))
-
-            # 6. Guardar con alta calidad
-            cropped_image.save(output_path, quality=95, optimize=True)
-
-            return True  # Éxito
         except Exception as e:
-            print(f"Error: {e}")  # Mensaje de error
-            return False 
+            print(f"Error: {e}")  # Opcional: Imprimir el error para depuración
+            return False  # Retorna False si ocurre un error
+
 
     @staticmethod
     def resize_image_for_pdf(image_path, output_path, target_width_px, target_height_px, dpi=96):
@@ -724,6 +870,7 @@ class Imagen:
         except Exception as e:
             print(f"Error: {e}")
             return False
+
 
 
 class Archivos:
@@ -779,7 +926,7 @@ class Archivos:
     def truncar_texto(texto, num_palabras):
         palabras = texto.split()
         if len(palabras) > num_palabras:
-            return " ".join(palabras[:num_palabras]) + " .."
+            return " ".join(palabras[:num_palabras]) + "..."
         return texto
 
     @staticmethod
@@ -806,6 +953,7 @@ class Archivos:
             logging.error(f"Error al eliminar el contenido del directorio: {e}")
             print(f"Error al eliminar el contenido del directorio: {e}")
             return False
+
 
 
 
@@ -907,6 +1055,53 @@ class Pdf:
         except Exception as e:
             print(f"Error: {e}")
             return False  # Fallo
+
+    @staticmethod
+    def editar_pdf(input_url, output_url, texto, x, y, estilo):
+        try:
+            # Cargar el PDF
+            doc = fitz.open(input_url)
+            pagina = doc[0]  # Edita la primera página (puedes cambiarlo)
+
+            # Extraer el estilo
+            tipografia, tamano_fuente, color = estilo
+            color_rgb = tuple(c / 255 for c in color) 
+            
+            # Insertar el texto
+            pagina.insert_text((x, y), texto, fontsize=tamano_fuente, fontname=tipografia, color=color_rgb)
+
+            # Guardar los cambios
+            doc.save(output_url)
+            doc.close()
+            return True
+        except Exception as e:
+            print(f"Error al editar el PDF: {e}")
+            return False    
+
+
+    @staticmethod
+    def centrar_texto(texto, fontname, fontsize, rango=(100, 440)):
+        """ Centra el texto en el rango especificado considerando su longitud """
+        # Si el texto tiene más de 40 caracteres, acortarlo (solo la primera palabra)
+        if len(texto) > 40:
+            palabras = texto.split()
+            palabras[0] = palabras[0][0] + "."  # Reemplazar la primera palabra con la inicial
+            texto = " ".join(palabras)
+
+        # Crear la fuente
+        doc = fitz.open()  # Abrir un documento temporal solo para usar la fuente
+        fuente = fitz.Font(fontname)
+        
+        # Calcular el ancho del texto
+        ancho_texto = fuente.text_length(texto, fontsize)
+        
+        # Calcular el espacio disponible
+        espacio_disponible = rango[1] - rango[0]
+        
+        # Centrar el texto: la posición x es la mitad del espacio disponible menos la mitad del ancho del texto
+        x = rango[0] + (espacio_disponible - ancho_texto) / 2
+        
+        return x, texto
 
 
 

@@ -316,7 +316,6 @@ class Hotel:
                 return {"estado": False, "mensaje": "No se ha podido reemplazar docx"}
 
             
-
     @staticmethod
     def generar_pdf_hotel(dataHotel, idUnico):
         if dataHotel:
@@ -375,7 +374,6 @@ class Hotel:
             return {"estado": False, "mensaje": "No hay datos del hotel"}
 
         
-
     @staticmethod
     def calcular_dias_noches(check_in, check_out):
         # Convertir las fechas de string a objetos datetime
@@ -396,6 +394,7 @@ class Hotel:
             "noches": noches
         }
     
+        
         
 class Actividad:
     @staticmethod
@@ -530,7 +529,7 @@ class Costos:
             docs_eliminar.append(ruta_docx_generado_costos)
             estilos = {"fuente": "Helvetica", "numero":12}
             if len(filas) > 0:
-                log_tabla_emiminar_fila = Docx.eliminar_filas_docx(ruta_plantilla_costos,ruta_plantilla_costos,filas)
+                log_tabla_emiminar_fila = Docx.eliminar_filas_docx(ruta_plantilla_costos,ruta_plantilla_costos,filas,1)
                 if not log_tabla_emiminar_fila:
                     return {"estado": False, "mensaje": "No se logro eliminar las filas de costos"} 
             log_reemplazar_cotitazion = Docx.reemplazar_texto_tabla_parrafo(ruta_plantilla_costos, ruta_docx_generado_costos, datos, estilos)
