@@ -272,7 +272,7 @@ class Hotel:
                     f"facilities0": facilities_text
                 }
                 # resultado.update(datos)
-                log_reemplazar_paquete = Docx.reemplazar_texto_tablas(ruta_docx_generado_paquete,ruta_docx_generado_paquete, datos, estilos)
+                log_reemplazar_paquete = Docx.reemplazar_texto_tablas(ruta_docx_generado_paquete,ruta_docx_generado_paquete, datos, estilos, alineacion="LEFT")
                 if log_reemplazar_paquete:
                     ruta_directorio_pdf = os.path.abspath("plantilla/cotizaciones/temp")
                     ruta_pdf_cotizacion_paquete = Pdf.convertir_docx_a_pdf(ruta_docx_generado_paquete, ruta_directorio_pdf)
@@ -302,7 +302,7 @@ class Hotel:
                 "actividades": act
             }
             resultado.update(personas)
-            log_reemplazar_paquete = Docx.reemplazar_texto_tablas(ruta_docx_generado_paquete,ruta_docx_generado_paquete, resultado, estilos)
+            log_reemplazar_paquete = Docx.reemplazar_texto_tablas(ruta_docx_generado_paquete,ruta_docx_generado_paquete, resultado, estilos, alineacion="LEFT")
             if log_reemplazar_paquete:
                 ruta_directorio_pdf = os.path.abspath("plantilla/cotizaciones/temp")
                 ruta_pdf_cotizacion_paquete = Pdf.convertir_docx_a_pdf(ruta_docx_generado_paquete, ruta_directorio_pdf)
