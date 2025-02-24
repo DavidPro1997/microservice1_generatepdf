@@ -36,7 +36,14 @@ class Switch:
                 return {"estado": False, "mensaje": "No se logro eliminar los archivos temporales"} 
         elif data["tipo"] == "pdf_reservas":
             print("Realizando servicio de creacion de confirmación de reservas")
-            return Reservas.pdf_reseva(data, unique_id)
+            resultado = Reservas.pdf_reseva(data, unique_id)
+            ruta_temp_reservas = os.path.abspath(f"plantilla/reservas/temp")
+            log_temp = Archivos.eliminar_contenido_directorio(ruta_temp_reservas)
+            if log_temp:
+                return resultado
+            else:
+                return {"estado": False, "mensaje": "No se logro eliminar los archivos temporales"} 
+            # return Reservas.pdf_reseva(data, unique_id)
         else:
             return {"estado": False, "mensaje": "No se reconoce el tipo de archivo"}
         
