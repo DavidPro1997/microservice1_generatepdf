@@ -302,12 +302,12 @@ class Hotel:
             docs_eliminar.append(ruta_docx_generado_paquete)
             act = ""
             if actividades:
-                act = "\n".join(f"{tour['nombre']} - {item['ciudad']}" for item in actividades for tour in item["tours"])
+                act = "\n".join(f"•  {tour['nombre']} - {item['ciudad']}" for item in actividades for tour in item["tours"])
             else:
                 act = "No incluye actividades" 
             resultado = {
-                "city": ciudad,
-                "ticket": ticket,
+                "city": (f"•  {ciudad}"),
+                "ticket": (f"•  {ticket}"),
                 "actividades": act,
                 "automovil": automovil
             }
