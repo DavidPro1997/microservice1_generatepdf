@@ -22,7 +22,7 @@ class Cotizador:
                 if portada["estado"]:
                     ruta_portada = portada["ruta"]
                     docs_eliminar.append(ruta_portada)
-                log_paquete = Hotel.generar_pdf_paquete(data["hotel"], data["actividades"], ticket, idUnico)
+                log_paquete = Hotel.generar_pdf_paquete(data["hotel"], data["actividades"], data["auto"], ticket, idUnico)
                 if log_paquete["estado"]:
                     ruta_paquete = log_paquete["ruta"]
                     docs_eliminar.append(ruta_paquete)
@@ -43,6 +43,8 @@ class Cotizador:
                         ruta_actividades = log_actividades["ruta"]
                         docs_eliminar.append(ruta_actividades)
                 if "costos" in data and data["costos"]:
+                    if "auto" in data and data["auto"]["existe"]:
+                        incluye.append("auto SUV privado")
                     costos = Costos.generarPdfCostos(data["costos"], incluye, idUnico)
                     if costos["estado"]:
                         ruta_costos = costos["ruta"]
@@ -55,7 +57,7 @@ class Cotizador:
                 if portada["estado"]:
                     ruta_portada = portada["ruta"]
                     docs_eliminar.insert(0, ruta_portada)
-                log_paquete = Hotel.generar_pdf_paquete(data["hotel"], data["actividades"] ,ticket, idUnico)
+                log_paquete = Hotel.generar_pdf_paquete(data["hotel"], data["actividades"], data["auto"] ,ticket, idUnico)
                 if log_paquete["estado"]:
                     ruta_paquete = log_paquete["ruta"]
                     docs_eliminar.append(ruta_paquete)
@@ -71,6 +73,8 @@ class Cotizador:
                         ruta_actividades = log_actividades["ruta"]
                         docs_eliminar.append(ruta_actividades)
                 if "costos" in data and data["costos"]:
+                    if "auto" in data and data["auto"]["existe"]:
+                        incluye.append("auto SUV privado")
                     costos = Costos.generarPdfCostos(data["costos"], incluye, idUnico)
                     if costos["estado"]:
                         ruta_costos = costos["ruta"]
@@ -86,7 +90,7 @@ class Cotizador:
                 if portada["estado"]:
                     ruta_portada = portada["ruta"]
                     docs_eliminar.append(ruta_portada)
-                log_paquete = Hotel.generar_pdf_paquete(data["hotel"], data["actividades"], ticket,idUnico, ciudad, personas)
+                log_paquete = Hotel.generar_pdf_paquete(data["hotel"], data["actividades"], data["auto"], ticket,idUnico, ciudad, personas)
                 if log_paquete["estado"]:
                     ruta_paquete = log_paquete["ruta"]
                     docs_eliminar.append(ruta_paquete)
@@ -102,6 +106,8 @@ class Cotizador:
                         ruta_actividades = log_actividades["ruta"]
                         docs_eliminar.append(ruta_actividades)
                 if "costos" in data and data["costos"]:
+                    if "auto" in data and data["auto"]["existe"]:
+                        incluye.append("auto SUV privado")
                     costos = Costos.generarPdfCostos(data["costos"], incluye, idUnico)
                     if costos["estado"]:
                         ruta_costos = costos["ruta"]
@@ -127,7 +133,6 @@ class Cotizador:
             return {"estado": False, "mensaje": "No se logro unir los docs generales"}
     
 
-    
     @staticmethod
     def generarPDFPortada(ciudad, idUnico):
         if ciudad:
@@ -218,13 +223,16 @@ class Cotizador:
 
 class Hotel:    
     @staticmethod
-    def generar_pdf_paquete(dataHotel, actividades, ticket, idUnico, ciudad=None, personas = None):        
+    def generar_pdf_paquete(dataHotel, actividades, auto, ticket, idUnico, ciudad=None, personas = None):        
         docs_eliminar = []
+        if auto["existe"]:
+            automovil = "•  Si incluye automovil SUV privado\n•  Seguro contra terceros\n•  Segundo conductor\n•  Millaje ilimitado" 
+        else:
+            automovil =  "•  No incluye automovil"
         if dataHotel:
             numero_hoteles = len(dataHotel)
             estilos = {"fuente": "Helvetica", "numero":12}
             ruta_plantilla_paquete = os.path.abspath(f"plantilla/cotizaciones/plantilla_cotizar_paquete_1.docx")
-            resultado = {}
             hoteles_unir = []
             for index, hotel in enumerate(dataHotel):
                 ruta_docx_generado_paquete = os.path.abspath(f"plantilla/cotizaciones/temp/cotizacion_paquete_{index}_{idUnico}.docx")
@@ -269,7 +277,8 @@ class Hotel:
                     f"ticket0": (f"•  {ticket}"),
                     f"actividades0": act,
                     f"habitacion0": habitaciones,
-                    f"facilities0": facilities_text
+                    f"facilities0": facilities_text,
+                    f"automovil": automovil
                 }
                 # resultado.update(datos)
                 log_reemplazar_paquete = Docx.reemplazar_texto_tablas(ruta_docx_generado_paquete,ruta_docx_generado_paquete, datos, estilos, alineacion="LEFT")
@@ -299,7 +308,8 @@ class Hotel:
             resultado = {
                 "city": ciudad,
                 "ticket": ticket,
-                "actividades": act
+                "actividades": act,
+                "automovil": automovil
             }
             resultado.update(personas)
             log_reemplazar_paquete = Docx.reemplazar_texto_tablas(ruta_docx_generado_paquete,ruta_docx_generado_paquete, resultado, estilos, alineacion="LEFT")
