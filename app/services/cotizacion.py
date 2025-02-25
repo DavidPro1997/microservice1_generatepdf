@@ -304,7 +304,7 @@ class Hotel:
             if actividades:
                 act = "\n".join(f"•  {tour['nombre']} - {item['ciudad']}" for item in actividades for tour in item["tours"])
             else:
-                act = "No incluye actividades" 
+                act = "•  No incluye actividades" 
             resultado = {
                 "city": (f"•  {ciudad}"),
                 "ticket": (f"•  {ticket}"),
