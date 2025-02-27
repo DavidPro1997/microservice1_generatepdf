@@ -235,7 +235,7 @@ class Cotizador:
     def pdf_auto(dataAuto, idUnico):
         if dataAuto["existe"]:
             if dataAuto["tipo"] == "0":
-                imagen = "img/autos/compacto.jpg"
+                imagen = "img/autos/corolla.jpg"
                 tipo = "Automovil Compacto privado"
             if dataAuto["tipo"] == "1":
                 imagen = "img/autos/dodge.jpg"
