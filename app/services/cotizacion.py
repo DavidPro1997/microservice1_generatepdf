@@ -42,9 +42,13 @@ class Cotizador:
                         incluye.append("actividades")
                         ruta_actividades = log_actividades["ruta"]
                         docs_eliminar.append(ruta_actividades)
+                if "auto" in data and data["auto"]["existe"]:
+                    log_auto = Cotizador.pdf_auto(data["auto"], idUnico)
+                    if log_auto["estado"]:
+                        incluye.append(log_auto["tipo"])
+                        ruta_auto = log_auto["ruta"]
+                        docs_eliminar.append(ruta_auto)
                 if "costos" in data and data["costos"]:
-                    if "auto" in data and data["auto"]["existe"]:
-                        incluye.append("auto SUV privado")
                     costos = Costos.generarPdfCostos(data["costos"], incluye, idUnico)
                     if costos["estado"]:
                         ruta_costos = costos["ruta"]
@@ -72,9 +76,13 @@ class Cotizador:
                         incluye.append("actividades")
                         ruta_actividades = log_actividades["ruta"]
                         docs_eliminar.append(ruta_actividades)
+                if "auto" in data and data["auto"]["existe"]:
+                    log_auto = Cotizador.pdf_auto(data["auto"], idUnico)
+                    if log_auto["estado"]:
+                        incluye.append(log_auto["tipo"])
+                        ruta_auto = log_auto["ruta"]
+                        docs_eliminar.append(ruta_auto)
                 if "costos" in data and data["costos"]:
-                    if "auto" in data and data["auto"]["existe"]:
-                        incluye.append("auto SUV privado")
                     costos = Costos.generarPdfCostos(data["costos"], incluye, idUnico)
                     if costos["estado"]:
                         ruta_costos = costos["ruta"]
@@ -105,9 +113,13 @@ class Cotizador:
                         incluye.append("actividades")
                         ruta_actividades = log_actividades["ruta"]
                         docs_eliminar.append(ruta_actividades)
+                if "auto" in data and data["auto"]["existe"]:
+                    log_auto = Cotizador.pdf_auto(data["auto"], idUnico)
+                    if log_auto["estado"]:
+                        incluye.append(log_auto["tipo"])
+                        ruta_auto = log_auto["ruta"]
+                        docs_eliminar.append(ruta_auto)
                 if "costos" in data and data["costos"]:
-                    if "auto" in data and data["auto"]["existe"]:
-                        incluye.append("auto SUV privado")
                     costos = Costos.generarPdfCostos(data["costos"], incluye, idUnico)
                     if costos["estado"]:
                         ruta_costos = costos["ruta"]
@@ -219,7 +231,51 @@ class Cotizador:
         else:
             return {"estado": False, "mensaje": "No hay datos en el body"}  
       
-      
+    @staticmethod
+    def pdf_auto(dataAuto, idUnico):
+        if dataAuto["existe"]:
+            if dataAuto["tipo"] == "0":
+                imagen = "img/autos/compacto.jpg"
+                tipo = "Automovil Compacto privado"
+            if dataAuto["tipo"] == "1":
+                imagen = "img/autos/dodge.jpg"
+                tipo = "Automovil Miniván privado"
+            if dataAuto["tipo"] == "2":
+                imagen = "img/autos/rogue.jpg"
+                tipo = "Automovil SUV privado"
+            if dataAuto["tipo"] == "3":
+                imagen = "img/autos/transit.jpg"
+                tipo = "Automovil Van privado"
+            datos = {
+                "tipo": tipo,
+                "descripcion": "Explora tu destino a tu ritmo con nuestro servicio de alquiler de autos. Olvídate de los horarios de transporte público y las costosas tarifas de taxis. Con un auto de alquiler, puedes descubrir cada rincón de la ciudad con comodidad, seguridad y flexibilidad. Elige entre una amplia variedad de vehículos modernos y bien equipados, desde compactos ágiles para la ciudad hasta espaciosas SUVs ideales para viajes en familia. Disfruta de tarifas accesibles, opciones de seguro incluidas y la conveniencia de recoger y devolver el auto en aeropuertos, hoteles o puntos estratégicos. Viaja sin límites, detente donde quieras y aprovecha al máximo cada momento. Reserva tu auto hoy y haz de tu viaje una experiencia inolvidable.",
+               
+            }
+            ruta_plantilla_auto_original = os.path.abspath("plantilla/cotizaciones/plantilla_cotizar_auto.docx")
+            ruta_plantilla_auto = os.path.abspath(f"plantilla/cotizaciones/temp/plantilla_cotizar_auto_{idUnico}.docx")
+            shutil.copy(ruta_plantilla_auto_original, ruta_plantilla_auto)
+            estilos = {"fuente": "Helvetica", "numero":12}
+            log_reemplazar_cotitazion = Docx.reemplazar_texto_parrafos(ruta_plantilla_auto, ruta_plantilla_auto, datos, estilos)
+            if log_reemplazar_cotitazion:
+                ruta_imagen_descargada = os.path.abspath(f"plantilla/cotizaciones/temp/imagen_auto_{idUnico}.jpeg")
+                ruta_imagen = (f"https://cotizador.mvevip.com/{imagen}")
+                log_download = Imagen.download_image(ruta_imagen, ruta_imagen_descargada)
+                if not log_download:
+                    ruta_imagen_descargada = os.path.abspath(f"img/mkv.jpg")
+                log_imagen = Docx.imagen_en_docx(ruta_imagen_descargada, ruta_plantilla_auto, "[imagen_auto]", ancho_en_pt=400)
+                if log_imagen:
+                    ruta_directorio_pdf = os.path.abspath("plantilla/cotizaciones/temp")
+                    ruta_pdf_generado = Pdf.convertir_docx_a_pdf(ruta_plantilla_auto, ruta_directorio_pdf)
+                    if ruta_pdf_generado:
+                        return {"estado": True, "mensaje": "Documento creado exitosamente", "ruta": ruta_pdf_generado, "tipo": tipo}
+                    else:
+                        return {"estado": False, "mensaje": "No se ha podido convertir docx a pdf"}
+                else:
+                    return {"estado": False, "mensaje": "No se ha podido añadir imagen a docx"}
+            else:
+                return {"estado": False, "mensaje": "No se ha podido reemplazar docx"}
+        else:
+            return {"estado": False, "mensaje": "No hay datos de auto"}
 
 class Hotel:    
     @staticmethod
