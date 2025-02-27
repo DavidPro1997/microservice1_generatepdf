@@ -226,7 +226,15 @@ class Hotel:
     def generar_pdf_paquete(dataHotel, actividades, auto, ticket, idUnico, ciudad=None, personas = None):        
         docs_eliminar = []
         if auto["existe"]:
-            automovil = "•  Si incluye automovil SUV privado\n•  Seguro contra terceros\n•  Segundo conductor\n•  Millaje ilimitado" 
+            if auto["tipo"] == "0":
+                tipo = "Incluye Automovil Compacto privado"
+            if auto["tipo"] == "1":
+                tipo = "Incluye Automovil SUV privado"
+            if auto["tipo"] == "2":
+                tipo = "Incluye Automovil Miniván privado"
+            if auto["tipo"] == "3":
+                tipo = "Incluye Automovil Van privado"
+            automovil = (f"•  {tipo}\n•  Seguro contra terceros\n•  Segundo conductor\n•  Millaje ilimitado") 
         else:
             automovil =  "•  No incluye automovil"
         if dataHotel:
